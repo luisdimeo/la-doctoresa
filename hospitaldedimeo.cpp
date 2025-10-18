@@ -323,7 +323,27 @@ HistorialMedico* obtenerHistorialCompleto(Paciente* paciente, int* cantidad) {
     *cantidad = paciente->cantidadConsultas;
     return paciente->historial;
 }
+void mostrarHistorialMedico(Paciente* paciente) {
+    cout << "╔════════════════════════════════════════════════════════════════════════════════════╗\n";
+    cout << "║                      HISTORIAL MÉDICO DEL PACIENTE                                 ║\n";
+    cout << "╠════╦════════════╦═══════╦══════════════════════╦════════════╦══════════════════════╣\n";
+    cout << "║ ID ║ FECHA      ║ HORA  ║ DIAGNÓSTICO          ║ DOCTOR ID  ║ COSTO                ║\n";
+    cout << "╠════╬════════════╬═══════╬══════════════════════╬════════════╬══════════════════════╣\n";
+
+    for (int i = 0; i < paciente->cantidadConsultas; i++) {
+        HistorialMedico& h = paciente->historial[i];
+        cout << "║ " << setw(3) << h.idConsulta << " ║ "
+             << setw(10) << h.fecha << " ║ "
+             << setw(5) << h.hora << " ║ "
+             << setw(22) << h.diagnostico << " ║ "
+             << setw(10) << h.idDoctor << " ║ "
+             << setw(20) << fixed << setprecision(2) << h.costo << " ║\n";
+    }
+
+    cout << "╚════╩════════════╩═══════╩══════════════════════╩════════════╩══════════════════════╝\n";
+}
 HistorialMedico* obtenerUltimaConsulta(Paciente* paciente) {
     if (paciente->cantidadConsultas == 0) return nullptr;
     return &paciente->historial[paciente->cantidadConsultas - 1];
 }
+
