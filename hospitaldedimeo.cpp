@@ -302,3 +302,28 @@ void listarPacientes(Hospital* hospital) {
 }
 
 //historial medico del pasciente 
+void agregarConsultaAlHistorial(Paciente* paciente, HistorialMedico consulta) {
+    if (paciente->cantidadConsultas >= paciente->capacidadHistorial) {
+        int nuevaCapacidad = paciente->capacidadHistorial * 2;
+        HistorialMedico* nuevoHistorial = new HistorialMedico[nuevaCapacidad];
+
+        for (int i = 0; i < paciente->cantidadConsultas; i++) {
+            nuevoHistorial[i] = paciente->historial[i];
+        }
+
+        delete[] paciente->historial;
+        paciente->historial = nuevoHistorial;
+        paciente->capacidadHistorial = nuevaCapacidad;
+    }
+
+    paciente->historial[paciente->cantidadConsultas] = consulta;
+    paciente->cantidadConsultas++;
+}
+HistorialMedico* obtenerHistorialCompleto(Paciente* paciente, int* cantidad) {
+    *cantidad = paciente->cantidadConsultas;
+    return paciente->historial;
+}
+HistorialMedico* obtenerUltimaConsulta(Paciente* paciente) {
+    if (paciente->cantidadConsultas == 0) return nullptr;
+    return &paciente->historial[paciente->cantidadConsultas - 1];
+}
