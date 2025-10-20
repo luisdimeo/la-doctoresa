@@ -161,11 +161,6 @@ Paciente* buscarPacientePorCedula(Hospital* hospital, const char* cedula) {
     }
     return nullptr;
 }
-bool validarCedula(const char* cedula) {
-    if (cedula == nullptr || strlen(cedula) == 0) return false;
-    if (strlen(cedula) > 20) return false;
-    return true;
-}
 
 char toLower(char c) {
     if (c >= 'A' && c <= 'Z') return c + 32;
@@ -209,6 +204,7 @@ Paciente** buscarPacientesPorNombre(Hospital* hospital, const char* nombre, int*
     }
     return resultados;
 }
+bool validarCedula(const char* cedula);
 
 Paciente* crearPaciente(Hospital* hospital, const char* nombre, const char* apellido, const char* cedula, int edad, char sexo) {
     if (!validarCedula(cedula)) return nullptr;
@@ -629,6 +625,65 @@ void listarCitasPorDoctor(Hospital* hospital, int idDoctor) {
         }
     }
 }
+//Validaciones y Utilidades
+
+bool validarCedula(const char* cedula) {
+    if (cedula == nullptr || strlen(cedula) == 0) return false;
+    if (strlen(cedula) > 20) return false;
+    return true;
+}
+
+bool validarEmail(const char* email) {
+    if (email == nullptr || strlen(email) == 0) return false;
+    if (strlen(email) > 100) return false;
+    return strchr(email, '@') != nullptr;
+}
+
+bool validarHora(const char* hora) {
+    if (strlen(hora) != 5) return false;
+    return (hora[2] == ':');
+}
+
+void redimensionarArrayCitas(Hospital* hospital) {
+    int nuevaCapacidad = hospital->capacidadCitas * 2;
+    Cita* nuevoArray = new Cita[nuevaCapacidad];
+
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        nuevoArray[i] = hospital->citas[i];
+    }
+
+    delete[] hospital->citas;
+    hospital->citas = nuevoArray;
+    hospital->capacidadCitas = nuevaCapacidad;
+}
+
+void redimensionarCitasPaciente(Paciente* paciente) {
+    int nuevaCapacidad = paciente->capacidadCitas * 2;
+    int* nuevoArray = new int[nuevaCapacidad];
+
+    for (int i = 0; i < paciente->cantidadCitas; i++) {
+        nuevoArray[i] = paciente->citasAgendadas[i];
+    }
+
+    delete[] paciente->citasAgendadas;
+    paciente->citasAgendadas = nuevoArray;
+    paciente->capacidadCitas = nuevaCapacidad;
+}
+
+void redimensionarCitasDoctor(Doctor* doctor) {
+    int nuevaCapacidad = doctor->capacidadCitas * 2;
+    int* nuevoArray = new int[nuevaCapacidad];
+
+    for (int i = 0; i < doctor->cantidadCitas; i++) {
+        nuevoArray[i] = doctor->citasAgendadas[i];
+    }
+
+    delete[] doctor->citasAgendadas;
+    doctor->citasAgendadas = nuevoArray;
+    doctor->capacidadCitas = nuevaCapacidad;
+}
+
+
 
 
 
