@@ -346,4 +346,178 @@ HistorialMedico* obtenerUltimaConsulta(Paciente* paciente) {
     if (paciente->cantidadConsultas == 0) return nullptr;
     return &paciente->historial[paciente->cantidadConsultas - 1];
 }
+//
+Doctor* buscarDoctorPorCedula(Hospital* hospital, const char* cedula);
+void redimensionarArrayDoctores(Hospital* hospital);
+
+Doctor* crearDoctor(Hospital* hospital, const char* nombre, const char* apellido, const char* cedula,
+                    const char* especialidad, int aniosExperiencia, float costoConsulta) {
+    if (buscarDoctorPorCedula(hospital, cedula) != nullptr) return nullptr;
+
+    if (hospital->cantidadDoctores >= hospital->capacidadDoctores) {
+        redimensionarArrayDoctores(hospital);
+    }
+
+    Doctor& nuevo = hospital->doctores[hospital->cantidadDoctores];
+    nuevo.id = hospital->siguienteIdDoctor++;
+    strncpy(nuevo.nombre, nombre, 50);
+    strncpy(nuevo.apellido, apellido, 50);
+    strncpy(nuevo.cedula, cedula, 20);
+    strncpy(nuevo.especialidad, especialidad, 50);
+    nuevo.añosdeExperiencia = aniosExperiencia;
+    nuevo.costoConsulta = costoConsulta;
+    strcpy(nuevo.horarioAtencion, "");
+    strcpy(nuevo.telefono, "");
+    strcpy(nuevo.email, "");
+    nuevo.disponible = true;
+
+    nuevo.capacidadPacientes = 5;
+    nuevo.cantidadPacientes = 0;
+    nuevo.pacientesAsignados = new int[nuevo.capacidadPacientes];
+
+    nuevo.capacidadCitas = 10;
+    nuevo.cantidadCitas = 0;
+    nuevo.citasAgendadas = new int[nuevo.capacidadCitas];
+
+    hospital->cantidadDoctores++;
+    return &nuevo;
+}
+
+
+Doctor* buscarDoctorPorId(Hospital* hospital, int id) {
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        if (hospital->doctores[i].id == id) {
+            return &hospital->doctores[i];
+        }
+    }
+    return nullptr;
+}
+Doctor* buscarDoctorPorCedula(Hospital* hospital, const char* cedula) {
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        if (strcmp(hospital->doctores[i].cedula, cedula) == 0) {
+            return &hospital->doctores[i];
+        }
+    }
+    return nullptr;
+}
+    
+void redimensionarArrayDoctores(Hospital* hospital) {
+    int nuevaCapacidad = hospital->capacidadDoctores * 2;
+    Doctor* nuevoArray = new Doctor[nuevaCapacidad];
+
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        nuevoArray[i] = hospital->doctores[i];
+    }
+
+    delete[] hospital->doctores;
+    hospital->doctores = nuevoArray;
+    hospital->capacidadDoctores = nuevaCapacidad;
+}
+Doctor** buscarDoctoresPorEspecialidad(Hospital* hospital, const char* especialidad, int* cantidad) {
+    *cantidad = 0;
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        if (strcmp(hospital->doctores[i].especialidad, especialidad) == 0) {
+            (*cantidad)++;
+        }
+    }
+
+    if (*cantidad == 0) return nullptr;
+
+    Doctor** resultados = new Doctor*[*cantidad];
+    int index = 0;
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        if (strcmp(hospital->doctores[i].especialidad, especialidad) == 0) {
+            resultados[index++] = &hospital->doctores[i];
+        }
+    }
+    return resultados;
+}
+bool asignarPacienteADoctor(Doctor* doctor, int idPaciente) {
+    for (int i = 0; i < doctor->cantidadPacientes; i++) {
+        if (doctor->pacientesAsignados[i] == idPaciente) return false;
+    }
+
+    if (doctor->cantidadPacientes >= doctor->capacidadPacientes) {
+        int nuevaCapacidad = doctor->capacidadPacientes * 2;
+        int* nuevoArray = new int[nuevaCapacidad];
+        for (int i = 0; i < doctor->cantidadPacientes; i++) {
+            nuevoArray[i] = doctor->pacientesAsignados[i];
+        }
+        delete[] doctor->pacientesAsignados;
+        doctor->pacientesAsignados = nuevoArray;
+        doctor->capacidadPacientes = nuevaCapacidad;
+    }
+
+    doctor->pacientesAsignados[doctor->cantidadPacientes++] = idPaciente;
+    return true;
+}
+
+bool removerPacienteDeDoctor(Doctor* doctor, int idPaciente) {
+    int index = -1;
+    for (int i = 0; i < doctor->cantidadPacientes; i++) {
+        if (doctor->pacientesAsignados[i] == idPaciente) {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1) return false;
+
+    for (int i = index; i < doctor->cantidadPacientes - 1; i++) {
+        doctor->pacientesAsignados[i] = doctor->pacientesAsignados[i + 1];
+    }
+    doctor->cantidadPacientes--;
+    return true;
+}
+void listarPacientesDeDoctor(Hospital* hospital, int idDoctor) {
+    Doctor* doctor = buscarDoctorPorId(hospital, idDoctor);
+    if (!doctor) return;
+
+    cout << "Pacientes asignados al Dr. " << doctor->nombre << " " << doctor->apellido << ":\n";
+    for (int i = 0; i < doctor->cantidadPacientes; i++) {
+        Paciente* p = buscarPacientePorId(hospital, doctor->pacientesAsignados[i]);
+        if (p) {
+            cout << "- " << p->nombre << " " << p->apellido << " (ID: " << p->id << ")\n";
+        }
+    }
+}
+
+void listarDoctores(Hospital* hospital) {
+    cout << "╔════════════════════════════════════════════════════════════╗\n";
+    cout << "║                    LISTA DE DOCTORES                       ║\n";
+    cout << "╠═════╦═════════════════════╦══════════════╦═════════════════╣\n";
+    cout << "║ ID  ║ NOMBRE COMPLETO     ║ CÉDULA       ║ ESPECIALIDAD    ║\n";
+    cout << "╠═════╬═════════════════════╬══════════════╬═════════════════╣\n";
+
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        Doctor& d = hospital->doctores[i];
+        cout << "║ " << setw(4) << d.id << " ║ "
+             << setw(20) << d.nombre << " " << d.apellido << " ║ "
+             << setw(12) << d.cedula << " ║ "
+             << setw(15) << d.especialidad << " ║\n";
+    }
+
+    cout << "╚═════╩═════════════════════╩══════════════╩═════════════════╝\n";
+}
+
+bool eliminarDoctor(Hospital* hospital, int id) {
+    int index = -1;
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        if (hospital->doctores[i].id == id) {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1) return false;
+
+    delete[] hospital->doctores[index].pacientesAsignados;
+    delete[] hospital->doctores[index].citasAgendadas;
+
+    for (int i = index; i < hospital->cantidadDoctores - 1; i++) {
+        hospital->doctores[i] = hospital->doctores[i + 1];
+    }
+
+    hospital->cantidadDoctores--;
+    return true;
+}
+
 
