@@ -682,6 +682,99 @@ void redimensionarCitasDoctor(Doctor* doctor) {
     doctor->citasAgendadas = nuevoArray;
     doctor->capacidadCitas = nuevaCapacidad;
 }
+int main() {
+    Hospital hospital;
+    hospital.capacidadPacientes = 10;
+    hospital.capacidadDoctores = 10;
+    hospital.capacidadCitas = 10;
+    hospital.pacientes = new Paciente[hospital.capacidadPacientes];
+    hospital.doctores = new Doctor[hospital.capacidadDoctores];
+    hospital.citas = new Cita[hospital.capacidadCitas];
+    hospital.cantidadPacientes = 0;
+    hospital.cantidadDoctores = 0;
+    hospital.cantidadCitas = 0;
+    hospital.siguienteIdPaciente = 1;
+    hospital.siguienteIdDoctor = 1;
+    hospital.siguienteIdCita = 1;
+
+    int opcion;
+    do {
+        cout << "\n╔════════════════════════════════════╗\n";
+        cout << "║     MENÚ PRINCIPAL DEL HOSPITAL    ║\n";
+        cout << "╠════════════════════════════════════╣\n";
+        cout << "║ 1. Registrar paciente              ║\n";
+        cout << "║ 2. Registrar doctor                ║\n";
+        cout << "║ 3. Agendar cita                    ║\n";
+        cout << "║ 4. Atender cita                    ║\n";
+        cout << "║ 5. Mostrar historial de paciente   ║\n";
+        cout << "║ 6. Listar doctores                 ║\n";
+        cout << "║ 0. Salir                           ║\n";
+        cout << "╚════════════════════════════════════╝\n";
+        cout << "Seleccione una opción: ";
+        cin >> opcion;
+        cin.ignore();
+
+        if (opcion == 1) {
+            char nombre[50], apellido[50], cedula[20];
+            int edad;
+            char sexo;
+            cout << "Nombre: "; cin.getline(nombre, 50);
+            cout << "Apellido: "; cin.getline(apellido, 50);
+            cout << "Cédula: "; cin.getline(cedula, 20);
+            cout << "Edad: "; cin >> edad;
+            cout << "Sexo (M/F): "; cin >> sexo;
+            cin.ignore();
+            crearPaciente(&hospital, nombre, apellido, cedula, edad, sexo);
+        } else if (opcion == 2) {
+            char nombre[50], apellido[50], cedula[20], especialidad[50];
+            int experiencia;
+            float costo;
+            cout << "Nombre: "; cin.getline(nombre, 50);
+            cout << "Apellido: "; cin.getline(apellido, 50);
+            cout << "Cédula profesional: "; cin.getline(cedula, 20);
+            cout << "Especialidad: "; cin.getline(especialidad, 50);
+            cout << "Años de experiencia: "; cin >> experiencia;
+            cout << "Costo de consulta: "; cin >> costo;
+            cin.ignore();
+            crearDoctor(&hospital, nombre, apellido, cedula, especialidad, experiencia, costo);
+        } else if (opcion == 3) {
+            int idPaciente, idDoctor;
+            char fecha[11], hora[6];
+            cout << "ID del paciente: "; cin >> idPaciente;
+            cout << "ID del doctor: "; cin >> idDoctor;
+            cin.ignore();
+            cout << "Fecha (dd/mm/yyyy): "; cin.getline(fecha, 11);
+            cout << "Hora (hh:mm): "; cin.getline(hora, 6);
+            agendarCita(&hospital, idPaciente, idDoctor, fecha, hora);
+        } else if (opcion == 4) {
+            int idCita;
+            char diagnostico[200];
+            float costo;
+            cout << "ID de la cita: "; cin >> idCita;
+            cin.ignore();
+            cout << "Diagnóstico: "; cin.getline(diagnostico, 200);
+            cout << "Costo: "; cin >> costo;
+            cin.ignore();
+            atenderCita(&hospital, idCita, diagnostico, costo);
+        } else if (opcion == 5) {
+            int idPaciente;
+            cout << "ID del paciente: "; cin >> idPaciente;
+            cin.ignore();
+            Paciente* p = buscarPacientePorId(&hospital, idPaciente);
+            if (p) mostrarHistorialMedico(p);
+        } else if (opcion == 6) {
+            listarDoctores(&hospital);
+        }
+
+    } while (opcion != 0);
+
+    // Liberar memoria
+    delete[] hospital.pacientes;
+    delete[] hospital.doctores;
+    delete[] hospital.citas;
+
+    return 0;
+}
 
 
 
