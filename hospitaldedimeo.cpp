@@ -520,4 +520,115 @@ bool eliminarDoctor(Hospital* hospital, int id) {
     return true;
 }
 
+//Gestion de citas
+Cita* agendarCita(Hospital* hospital, int idPaciente, int idDoctor, const char* fecha, const char* hora) {
+    Paciente* paciente = buscarPacientePorId(hospital, idPaciente);
+    Doctor* doctor = buscarDoctorPorId(hospital, idDoctor);
+    if (!paciente || !doctor) return nullptr;
+
+    if (hospital->cantidadCitas >= hospital->capacidadCitas) {
+        int nuevaCapacidad = hospital->capacidadCitas * 2;
+        Cita* nuevoArray = new Cita[nuevaCapacidad];
+        for (int i = 0; i < hospital->cantidadCitas; i++) {
+            nuevoArray[i] = hospital->citas[i];
+        }
+        delete[] hospital->citas;
+        hospital->citas = nuevoArray;
+        hospital->capacidadCitas = nuevaCapacidad;
+    }
+
+    Cita& nueva = hospital->citas[hospital->cantidadCitas];
+    nueva.id = hospital->siguienteIdCita++;
+    nueva.idPaciente = idPaciente;
+    nueva.idDoctor = idDoctor;
+    strncpy(nueva.fecha, fecha, 11);
+    strncpy(nueva.hora, hora, 6);
+    *nueva.estado = 0; // pendiente
+
+    // Agregar cita al paciente
+    if (paciente->cantidadCitas >= paciente->capacidadCitas) {
+        int nuevaCapacidad = paciente->capacidadCitas * 2;
+        int* nuevoArray = new int[nuevaCapacidad];
+        for (int i = 0; i < paciente->cantidadCitas; i++) {
+            nuevoArray[i] = paciente->citasAgendadas[i];
+        }
+        delete[] paciente->citasAgendadas;
+        paciente->citasAgendadas = nuevoArray;
+        paciente->capacidadCitas = nuevaCapacidad;
+    }
+    paciente->citasAgendadas[paciente->cantidadCitas++] = nueva.id;
+
+    // Agregar cita al doctor
+    if (doctor->cantidadCitas >= doctor->capacidadCitas) {
+        int nuevaCapacidad = doctor->capacidadCitas * 2;
+        int* nuevoArray = new int[nuevaCapacidad];
+        for (int i = 0; i < doctor->cantidadCitas; i++) {
+            nuevoArray[i] = doctor->citasAgendadas[i];
+        }
+        delete[] doctor->citasAgendadas;
+        doctor->citasAgendadas = nuevoArray;
+        doctor->capacidadCitas = nuevaCapacidad;
+    }
+    doctor->citasAgendadas[doctor->cantidadCitas++] = nueva.id;
+
+    hospital->cantidadCitas++;
+    return &nueva;
+}
+bool cancelarCita(Hospital* hospital, int idCita) {
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        if (hospital->citas[i].id == idCita) {
+            *hospital->citas[i].estado = 2; // cancelada
+            return true;
+        }
+    }
+    return false;
+}
+bool atenderCita(Hospital* hospital, int idCita, const char* diagnostico, float costo) {
+    Cita* cita = nullptr;
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        if (hospital->citas[i].id == idCita) {
+            cita = &hospital->citas[i];
+            break;
+        }
+    }
+    if (!cita || cita->estado!= 0) return false;
+
+    *cita->estado = 1; // atendida
+
+    HistorialMedico consulta;
+    consulta.idConsulta = cita->id;
+    strncpy(consulta.fecha, cita->fecha, 11);
+    strncpy(consulta.hora, cita->hora, 6);
+    strncpy(consulta.diagnostico, diagnostico, 500);
+    consulta.idDoctor = cita->idDoctor;
+    consulta.costo = costo;
+
+    Paciente* paciente = buscarPacientePorId(hospital, cita->idPaciente);
+    if (!paciente) return false;
+
+    agregarConsultaAlHistorial(paciente, consulta);
+    return true;
+}
+void listarCitasPorPaciente(Hospital* hospital, int idPaciente) {
+    cout << "Citas del paciente ID " << idPaciente << ":\n";
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        if (hospital->citas[i].idPaciente == idPaciente) {
+            cout << "- Cita ID " << hospital->citas[i].id << " con doctor " << hospital->citas[i].idDoctor
+                 << " el " << hospital->citas[i].fecha << " a las " << hospital->citas[i].hora
+                 << " (estado: " << hospital->citas[i].estado << ")\n";
+        }
+    }
+}
+void listarCitasPorDoctor(Hospital* hospital, int idDoctor) {
+    cout << "Citas del doctor ID " << idDoctor << ":\n";
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        if (hospital->citas[i].idDoctor == idDoctor) {
+            cout << "- Cita ID " << hospital->citas[i].id << " con paciente " << hospital->citas[i].idPaciente
+                 << " el " << hospital->citas[i].fecha << " a las " << hospital->citas[i].hora
+                 << " (estado: " << hospital->citas[i].estado << ")\n";
+        }
+    }
+}
+
+
 
