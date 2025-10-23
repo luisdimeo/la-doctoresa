@@ -711,58 +711,38 @@ cout << "| 5. Mostrar historial de paciente     |\n";
 cout << "| 6. Listar doctores                   |\n";
 cout << "| 0. Salir                             |\n";
 cout << "+--------------------------------------+\n";
-int opcion = -1; 
-
-while (true) { 
-    
-    cout << "+============================================================+\n";
-    cout << "|                    MENÚ PRINCIPAL DEL HOSPITAL             |\n";
-    cout << "+============================================================+\n";
-    cout << "| 1. Registrar paciente                                      |\n";
-    cout << "| 2. Registrar doctor                                        |\n";
-    cout << "| 3. Agendar cita                                            |\n";
-    cout << "| 4. Atender cita                                            |\n";
-    cout << "| 5. Mostrar historial de paciente                           |\n";
-    cout << "| 6. Listar doctores                                         |\n";
-    cout << "| 0. Salir                                                   |\n";
-    cout << "+============================================================+\n";
-    cout << "Seleccione una opción: ";
-    cin >> opcion;
-
-  
-    if (cin.fail()) {
-        cin.clear(); 
-        cin.ignore(1000, '\n'); 
-        cout << "⚠️ Entrada inválida. Intente de nuevo.\n";
-        continue; 
+if (cin.fail()) {
+        cin.clear(); // Limpia el estado de error
+        cin.ignore(1000, '\n'); // Descarta la entrada inválida
+        cout << "Entrada inválida. Intente de nuevo.\n";
+        continue; // Vuelve a mostrar el menú
     }
 
-    if (opcion == 0) break; 
+    if (opcion == 0) break; // Si el usuario elige 0, salir del programa
 
     switch (opcion) {
         case 1:
-            
+            // Aquí iría el código para registrar un paciente
             break;
         case 2:
-            
+            // Aquí iría el código para registrar un doctor
             break;
         case 3:
-            
+            // Aquí iría el código para agendar una cita
             break;
         case 4:
-            
+            // Aquí iría el código para atender una cita
             break;
         case 5:
-            
+            // Aquí iría el código para mostrar historial médico
             break;
         case 6:
-           
+            // Aquí iría el código para listar doctores
             break;
         default:
-            cout << "⚠️ Opción no válida. Intente de nuevo.\n";
+            cout << "Opción no válida. Intente de nuevo.\n";
             break;
     }
-}
 
         cout << "Seleccione una opcion: ";
         cin >> opcion;
