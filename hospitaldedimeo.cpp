@@ -711,6 +711,58 @@ cout << "| 5. Mostrar historial de paciente     |\n";
 cout << "| 6. Listar doctores                   |\n";
 cout << "| 0. Salir                             |\n";
 cout << "+--------------------------------------+\n";
+int opcion = -1; 
+
+while (true) { 
+    
+    cout << "+============================================================+\n";
+    cout << "|                    MENÚ PRINCIPAL DEL HOSPITAL             |\n";
+    cout << "+============================================================+\n";
+    cout << "| 1. Registrar paciente                                      |\n";
+    cout << "| 2. Registrar doctor                                        |\n";
+    cout << "| 3. Agendar cita                                            |\n";
+    cout << "| 4. Atender cita                                            |\n";
+    cout << "| 5. Mostrar historial de paciente                           |\n";
+    cout << "| 6. Listar doctores                                         |\n";
+    cout << "| 0. Salir                                                   |\n";
+    cout << "+============================================================+\n";
+    cout << "Seleccione una opción: ";
+    cin >> opcion;
+
+  
+    if (cin.fail()) {
+        cin.clear(); 
+        cin.ignore(1000, '\n'); 
+        cout << "⚠️ Entrada inválida. Intente de nuevo.\n";
+        continue; 
+    }
+
+    if (opcion == 0) break; 
+
+    switch (opcion) {
+        case 1:
+            
+            break;
+        case 2:
+            
+            break;
+        case 3:
+            
+            break;
+        case 4:
+            
+            break;
+        case 5:
+            
+            break;
+        case 6:
+           
+            break;
+        default:
+            cout << "⚠️ Opción no válida. Intente de nuevo.\n";
+            break;
+    }
+}
 
         cout << "Seleccione una opcion: ";
         cin >> opcion;
