@@ -279,11 +279,12 @@ bool eliminarPaciente(Hospital* hospital, int id) {
     return true;
 }
 void listarPacientes(Hospital* hospital) {
-    cout << "╔════════════════════════════════════════════════════════════╗\n";
-    cout << "║                    LISTA DE PACIENTES                      ║\n";
-    cout << "╠═════╦═════════════════════╦══════════════╦══════╦══════════╣\n";
-    cout << "║ ID  ║ NOMBRE COMPLETO     ║ CÉDULA       ║ EDAD ║ CONSULTAS║\n";
-    cout << "╠═════╬═════════════════════╬══════════════╬══════╬══════════╣\n";
+    cout << "+============================================================+\n";
+cout << "|                    LISTA DE PACIENTES                      |\n";
+cout << "+=====+=====================+==============+======+==========+\n";
+cout << "| ID  | NOMBRE COMPLETO     | CÉDULA       | EDAD | CONSULTAS|\n";
+cout << "+=====+=====================+==============+======+==========+\n";
+
 
     for (int i = 0; i < hospital->cantidadPacientes; i++) {
         Paciente& p = hospital->pacientes[i];
@@ -294,7 +295,7 @@ void listarPacientes(Hospital* hospital) {
              << setw(8) << p.cantidadConsultas << " ║\n";
     }
 
-    cout << "╚═════╩═════════════════════╩══════════════╩══════╩══════════╝\n";
+    cout << "+=====+=====================+==============+======+==========+\n";
 }
 
 //historial medico del pasciente 
@@ -320,11 +321,11 @@ HistorialMedico* obtenerHistorialCompleto(Paciente* paciente, int* cantidad) {
     return paciente->historial;
 }
 void mostrarHistorialMedico(Paciente* paciente) {
-    cout << "╔════════════════════════════════════════════════════════════════════════════════════╗\n";
-    cout << "║                      HISTORIAL MÉDICO DEL PACIENTE                                 ║\n";
-    cout << "╠════╦════════════╦═══════╦══════════════════════╦════════════╦══════════════════════╣\n";
-    cout << "║ ID ║ FECHA      ║ HORA  ║ DIAGNÓSTICO          ║ DOCTOR ID  ║ COSTO                ║\n";
-    cout << "╠════╬════════════╬═══════╬══════════════════════╬════════════╬══════════════════════╣\n";
+    cout << "+===============================================================================+\n";
+cout << "|                      HISTORIAL MÉDICO DEL PACIENTE                           |\n";
+cout << "+====+============+=======+======================+============+================+\n";
+cout << "| ID | FECHA      | HORA  | DIAGNÓSTICO          | DOCTOR ID  | COSTO          |\n";
+cout << "+====+============+=======+======================+============+================+\n";
 
     for (int i = 0; i < paciente->cantidadConsultas; i++) {
         HistorialMedico& h = paciente->historial[i];
@@ -336,7 +337,7 @@ void mostrarHistorialMedico(Paciente* paciente) {
              << setw(20) << fixed << setprecision(2) << h.costo << " ║\n";
     }
 
-    cout << "╚════╩════════════╩═══════╩══════════════════════╩════════════╩══════════════════════╝\n";
+   cout << "+====+============+=======+======================+============+====================+\n";
 }
 HistorialMedico* obtenerUltimaConsulta(Paciente* paciente) {
     if (paciente->cantidadConsultas == 0) return nullptr;
@@ -478,11 +479,11 @@ void listarPacientesDeDoctor(Hospital* hospital, int idDoctor) {
 }
 
 void listarDoctores(Hospital* hospital) {
-    cout << "╔════════════════════════════════════════════════════════════╗\n";
-    cout << "║                    LISTA DE DOCTORES                       ║\n";
-    cout << "╠═════╦═════════════════════╦══════════════╦═════════════════╣\n";
-    cout << "║ ID  ║ NOMBRE COMPLETO     ║ CÉDULA       ║ ESPECIALIDAD    ║\n";
-    cout << "╠═════╬═════════════════════╬══════════════╬═════════════════╣\n";
+    cout << "+============================================================+\n";
+cout << "|                    LISTA DE DOCTORES                       |\n";
+cout << "+=====+=====================+==============+=================+\n";
+cout << "| ID  | NOMBRE COMPLETO     | CÉDULA       | ESPECIALIDAD    |\n";
+cout << "+=====+=====================+==============+=================+\n";
 
     for (int i = 0; i < hospital->cantidadDoctores; i++) {
         Doctor& d = hospital->doctores[i];
@@ -492,7 +493,7 @@ void listarDoctores(Hospital* hospital) {
              << setw(15) << d.especialidad << " ║\n";
     }
 
-    cout << "╚═════╩═════════════════════╩══════════════╩═════════════════╝\n";
+    cout << "+======+=====================+====================+====================+\n";
 }
 
 bool eliminarDoctor(Hospital* hospital, int id) {
@@ -595,7 +596,7 @@ bool atenderCita(Hospital* hospital, int idCita, const char* diagnostico, float 
     consulta.idConsulta = cita->id;
     strncpy(consulta.fecha, cita->fecha, 11);
     strncpy(consulta.hora, cita->hora, 6);
-    strncpy(consulta.diagnostico, diagnostico, 500);
+    strncpy(consulta.diagnostico, diagnostico, 200);
     consulta.idDoctor = cita->idDoctor;
     consulta.costo = costo;
 
@@ -699,18 +700,19 @@ int main() {
 
     int opcion;
     do {
-        cout << "\n╔════════════════════════════════════╗\n";
-        cout << "║     MENÚ PRINCIPAL DEL HOSPITAL    ║\n";
-        cout << "╠════════════════════════════════════╣\n";
-        cout << "║ 1. Registrar paciente              ║\n";
-        cout << "║ 2. Registrar doctor                ║\n";
-        cout << "║ 3. Agendar cita                    ║\n";
-        cout << "║ 4. Atender cita                    ║\n";
-        cout << "║ 5. Mostrar historial de paciente   ║\n";
-        cout << "║ 6. Listar doctores                 ║\n";
-        cout << "║ 0. Salir                           ║\n";
-        cout << "╚════════════════════════════════════╝\n";
-        cout << "Seleccione una opción: ";
+       cout << "\n+--------------------------------------+\n";
+cout << "|     MENU PRINCIPAL DEL HOSPITAL      |\n";
+cout << "+--------------------------------------+\n";
+cout << "| 1. Registrar paciente                |\n";
+cout << "| 2. Registrar doctor                  |\n";
+cout << "| 3. Agendar cita                      |\n";
+cout << "| 4. Atender cita                      |\n";
+cout << "| 5. Mostrar historial de paciente     |\n";
+cout << "| 6. Listar doctores                   |\n";
+cout << "| 0. Salir                             |\n";
+cout << "+--------------------------------------+\n";
+
+        cout << "Seleccione una opcion: ";
         cin >> opcion;
         cin.ignore();
 
@@ -747,15 +749,34 @@ int main() {
             cout << "Hora (hh:mm): "; cin.getline(hora, 6);
             agendarCita(&hospital, idPaciente, idDoctor, fecha, hora);
         } else if (opcion == 4) {
-            int idCita;
-            char diagnostico[200];
-            float costo;
-            cout << "ID de la cita: "; cin >> idCita;
-            cin.ignore();
-            cout << "Diagnóstico: "; cin.getline(diagnostico, 200);
-            cout << "Costo: "; cin >> costo;
-            cin.ignore();
-            atenderCita(&hospital, idCita, diagnostico, costo);
+           int idCita;
+    cout << "ID de la cita: ";
+    cin >> idCita;
+    cin.ignore();
+    Cita* cita = nullptr;
+    for (int i = 0; i < hospital.cantidadCitas; i++) {
+        if (hospital.citas[i].id == idCita) {
+            cita = &hospital.citas[i];
+            break;
+        }
+    }
+    if (!cita) {
+        cout << "La cita con ID " << idCita << " no existe. Regresando al menú...\n";
+        continue; // vuelve al menú principal
+    }
+    char diagnostico[200];
+    float costo;
+    cout << "Diagnóstico: ";
+    cin.getline(diagnostico, 200);
+    cout << "Costo: ";
+    cin >> costo;
+    cin.ignore();
+    if (strcmp(cita->estado, "pendiente") != 0) {
+        cout << "La cita no está pendiente. No se puede atender.\n";
+    } else {
+        atenderCita(&hospital, idCita, diagnostico, costo);
+        cout << "Cita atendida correctamente.\n";
+    }
         } else if (opcion == 5) {
             int idPaciente;
             cout << "ID del paciente: "; cin >> idPaciente;
