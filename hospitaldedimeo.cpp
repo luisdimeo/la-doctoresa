@@ -282,7 +282,7 @@ void listarPacientes(Hospital* hospital) {
     cout << "+============================================================+\n";
 cout << "|                    LISTA DE PACIENTES                      |\n";
 cout << "+=====+=====================+==============+======+==========+\n";
-cout << "| ID  | NOMBRE COMPLETO     | CÉDULA       | EDAD | CONSULTAS|\n";
+cout << "| ID  | NOMBRE COMPLETO     | CEDULA       | EDAD | CONSULTAS|\n";
 cout << "+=====+=====================+==============+======+==========+\n";
 
 
@@ -479,22 +479,24 @@ void listarPacientesDeDoctor(Hospital* hospital, int idDoctor) {
 }
 
 void listarDoctores(Hospital* hospital) {
-    cout << "+============================================================+\n";
-cout << "|                    LISTA DE DOCTORES                       |\n";
-cout << "+=====+=====================+==============+=================+\n";
-cout << "| ID  | NOMBRE COMPLETO     | CÉDULA       | ESPECIALIDAD    |\n";
-cout << "+=====+=====================+==============+=================+\n";
+    cout << "\n+===============================================================+\n";
+    cout << "|                       LISTA DE DOCTORES                      |\n";
+    cout << "+-----+------------------------+----------------+---------------------+\n";
+    cout << "| ID  | NOMBRE COMPLETO        | CEDULA         | ESPECIALIDAD        |\n";
+    cout << "+-----+------------------------+----------------+---------------------+\n";
 
     for (int i = 0; i < hospital->cantidadDoctores; i++) {
         Doctor& d = hospital->doctores[i];
-        cout << "║ " << setw(4) << d.id << " ║ "
-             << setw(20) << d.nombre << " " << d.apellido << " ║ "
-             << setw(12) << d.cedula << " ║ "
-             << setw(15) << d.especialidad << " ║\n";
+        // Imprimir cada doctor con formato alineado
+        cout << "| " << setw(4) << d.id << " | "
+             << setw(22) << d.nombre << " | "
+             << setw(14) << d.cedula << " | "
+             << setw(19) << d.especialidad << " |\n";
     }
 
-    cout << "+======+=====================+====================+====================+\n";
+    cout << "+-----+------------------------+----------------+---------------------+\n";
 }
+
 
 bool eliminarDoctor(Hospital* hospital, int id) {
     int index = -1;
@@ -683,6 +685,33 @@ void redimensionarCitasDoctor(Doctor* doctor) {
     doctor->citasAgendadas = nuevoArray;
     doctor->capacidadCitas = nuevaCapacidad;
 }
+void destruirHospital(Hospital* hospital) {
+    // Liberar memoria de cada paciente
+    for (int i = 0; i < hospital->cantidadPacientes; i++) {
+        delete[] hospital->pacientes[i].citasAgendadas;   // Arreglo de citas agendadas
+        delete[] hospital->pacientes[i].historial;        // Arreglo de historial médico
+    }
+
+    // Liberar arreglo de pacientes
+    delete[] hospital->pacientes;
+
+    // Liberar arreglo de doctores
+    delete[] hospital->doctores;
+
+    // Liberar arreglo de citas
+    delete[] hospital->citas;
+
+    // Opcional: poner punteros en nullptr por seguridad
+    hospital->pacientes = nullptr;
+    hospital->doctores = nullptr;
+    hospital->citas = nullptr;
+
+    // Reiniciar contadores
+    hospital->cantidadPacientes = 0;
+    hospital->cantidadDoctores = 0;
+    hospital->cantidadCitas = 0;
+}
+
 int main() {
     Hospital hospital;
     hospital.capacidadPacientes = 10;
@@ -699,56 +728,34 @@ int main() {
     hospital.siguienteIdCita = 1;
 
     int opcion;
-    do {
-       cout << "\n+--------------------------------------+\n";
-cout << "|     MENU PRINCIPAL DEL HOSPITAL      |\n";
-cout << "+--------------------------------------+\n";
-cout << "| 1. Registrar paciente                |\n";
-cout << "| 2. Registrar doctor                  |\n";
-cout << "| 3. Agendar cita                      |\n";
-cout << "| 4. Atender cita                      |\n";
-cout << "| 5. Mostrar historial de paciente     |\n";
-cout << "| 6. Listar doctores                   |\n";
-cout << "| 0. Salir                             |\n";
-cout << "+--------------------------------------+\n";
-if (cin.fail()) {
-        cin.clear(); // Limpia el estado de error
-        cin.ignore(1000, '\n'); // Descarta la entrada inválida
+ do {
+    // Mostrar el menú
+    cout << "\n+--------------------------------------+\n";
+    cout << "|     MENU PRINCIPAL DEL HOSPITAL      |\n";
+    cout << "+--------------------------------------+\n";
+    cout << "| 1. Registrar paciente                |\n";
+    cout << "| 2. Registrar doctor                  |\n";
+    cout << "| 3. Agendar cita                      |\n";
+    cout << "| 4. Atender cita                      |\n";
+    cout << "| 5. Mostrar historial de paciente     |\n";
+    cout << "| 6. Listar doctores                   |\n";
+    cout << "| 0. Salir                             |\n";
+    cout << "+--------------------------------------+\n";
+    cout << "Seleccione una opcion: ";
+    cin >> opcion;
+
+    // Validar entrada
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(1000, '\n');
         cout << "Entrada inválida. Intente de nuevo.\n";
-        continue; // Vuelve a mostrar el menú
+        continue;
     }
 
-    if (opcion == 0) break; // Si el usuario elige 0, salir del programa
+    cin.ignore(); // Limpiar el buffer antes de usar getline
 
     switch (opcion) {
-        case 1:
-            // Aquí iría el código para registrar un paciente
-            break;
-        case 2:
-            // Aquí iría el código para registrar un doctor
-            break;
-        case 3:
-            // Aquí iría el código para agendar una cita
-            break;
-        case 4:
-            // Aquí iría el código para atender una cita
-            break;
-        case 5:
-            // Aquí iría el código para mostrar historial médico
-            break;
-        case 6:
-            // Aquí iría el código para listar doctores
-            break;
-        default:
-            cout << "Opción no válida. Intente de nuevo.\n";
-            break;
-    }
-
-        cout << "Seleccione una opcion: ";
-        cin >> opcion;
-        cin.ignore();
-
-        if (opcion == 1) {
+        case 1: {
             char nombre[50], apellido[50], cedula[20];
             int edad;
             char sexo;
@@ -759,7 +766,9 @@ if (cin.fail()) {
             cout << "Sexo (M/F): "; cin >> sexo;
             cin.ignore();
             crearPaciente(&hospital, nombre, apellido, cedula, edad, sexo);
-        } else if (opcion == 2) {
+            break;
+        }
+        case 2: {
             char nombre[50], apellido[50], cedula[20], especialidad[50];
             int experiencia;
             float costo;
@@ -771,7 +780,9 @@ if (cin.fail()) {
             cout << "Costo de consulta: "; cin >> costo;
             cin.ignore();
             crearDoctor(&hospital, nombre, apellido, cedula, especialidad, experiencia, costo);
-        } else if (opcion == 3) {
+            break;
+        }
+        case 3: {
             int idPaciente, idDoctor;
             char fecha[11], hora[6];
             cout << "ID del paciente: "; cin >> idPaciente;
@@ -780,53 +791,66 @@ if (cin.fail()) {
             cout << "Fecha (dd/mm/yyyy): "; cin.getline(fecha, 11);
             cout << "Hora (hh:mm): "; cin.getline(hora, 6);
             agendarCita(&hospital, idPaciente, idDoctor, fecha, hora);
-        } else if (opcion == 4) {
-           int idCita;
-    cout << "ID de la cita: ";
-    cin >> idCita;
-    cin.ignore();
-    Cita* cita = nullptr;
-    for (int i = 0; i < hospital.cantidadCitas; i++) {
-        if (hospital.citas[i].id == idCita) {
-            cita = &hospital.citas[i];
             break;
         }
-    }
-    if (!cita) {
-        cout << "La cita con ID " << idCita << " no existe. Regresando al menú...\n";
-        continue; // vuelve al menú principal
-    }
-    char diagnostico[200];
-    float costo;
-    cout << "Diagnóstico: ";
-    cin.getline(diagnostico, 200);
-    cout << "Costo: ";
-    cin >> costo;
-    cin.ignore();
-    if (strcmp(cita->estado, "pendiente") != 0) {
-        cout << "La cita no está pendiente. No se puede atender.\n";
-    } else {
-        atenderCita(&hospital, idCita, diagnostico, costo);
-        cout << "Cita atendida correctamente.\n";
-    }
-        } else if (opcion == 5) {
+        case 4: {
+            int idCita;
+            cout << "ID de la cita: "; cin >> idCita;
+            cin.ignore();
+            Cita* cita = nullptr;
+            for (int i = 0; i < hospital.cantidadCitas; i++) {
+                if (hospital.citas[i].id == idCita) {
+                    cita = &hospital.citas[i];
+                    break;
+                }
+            }
+            if (!cita) {
+                cout << "La cita con ID " << idCita << " no existe.\n";
+                break;
+            }
+            char diagnostico[200];
+            float costo;
+            cout << "Diagnóstico: "; cin.getline(diagnostico, 200);
+            cout << "Costo: "; cin >> costo;
+            cin.ignore();
+            if (strcmp(cita->estado, "pendiente") != 0) {
+                cout << "La cita no está pendiente.\n";
+            } else {
+                atenderCita(&hospital, idCita, diagnostico, costo);
+                cout << "Cita atendida correctamente.\n";
+            }
+            break;
+        }
+        case 5: {
             int idPaciente;
             cout << "ID del paciente: "; cin >> idPaciente;
             cin.ignore();
             Paciente* p = buscarPacientePorId(&hospital, idPaciente);
             if (p) mostrarHistorialMedico(p);
-        } else if (opcion == 6) {
-            listarDoctores(&hospital);
+            else cout << "Paciente no encontrado.\n";
+            break;
         }
+        case 6:
+            listarDoctores(&hospital);
+            break;
+        case 0:
+            cout << "Gracias por usar el sistema del hospital.\n";
+            break;
+        default:
+            cout << "Opción no válida. Intente de nuevo.\n";
+            break;
+    }
 
-    } while (opcion != 0);
+} while (opcion != 0);
 
-    // Liberar memoria
-    delete[] hospital.pacientes;
-    delete[] hospital.doctores;
-    delete[] hospital.citas;
+// Liberar memoria
+delete[] hospital.pacientes;
+delete[] hospital.doctores;
+delete[] hospital.citas;
 
-    return 0;
+destruirHospital(&hospital);
+
+return 0;
 }
 
 
