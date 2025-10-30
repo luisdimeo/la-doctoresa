@@ -377,6 +377,34 @@ void agregarHistorial(Paciente* paciente, const char* fecha, const char* hora, c
 
     paciente->capacidadHistorial++;
 }
+void agregarHistorial(Paciente* paciente) {
+    if (paciente->capacidadHistorial >= 10) {
+        cout << " El historial está lleno.\n";
+        return;
+    }
+
+    HistorialMedico& h = paciente->historial[paciente->capacidadHistorial];
+
+    cout << "Fecha (dd/mm/aaaa): ";
+    cin.getline(h.fecha, 20);
+
+    cout << "Hora (hh:mm): ";
+    cin.getline(h.hora, 10);
+
+    cout << "Diagnóstico: ";
+    cin.getline(h.diagnostico, 100);
+
+    cout << "ID del doctor: ";
+    cin >> h.idDoctor;
+    cin.ignore();
+
+    cout << "Costo: ";
+    cin >> h.costo;
+    cin.ignore();
+
+    paciente->capacidadHistorial++;
+    cout << "Historial agregado correctamente.\n";
+}
 
 void mostrarHistorialMedico(Hospital* hospital, int idPaciente) {
     Paciente* paciente = buscarPacientePorId(hospital, idPaciente);
@@ -385,23 +413,23 @@ void mostrarHistorialMedico(Hospital* hospital, int idPaciente) {
         return;
     }
 
-    cout << "+===============================================================================+\n";
+    cout << "+-------------------------------------------------------------------------------+\n";
     cout << "|                      HISTORIAL MEDICO DEL PACIENTE                           |\n";
-    cout << "+====+============+=======+======================+============+================+\n";
+    cout << "+----+------------+-------+----------------------+------------+-----------------+\n";
     cout << "| ID | FECHA      | HORA  | DIAGNOSTICO          | DOCTOR ID  | COSTO          |\n";
-    cout << "+====+============+=======+======================+============+================+\n";
+    cout << "+----+------------+-------+----------------------+------------+----------------+\n";
 
-    for (int i = 0; i < paciente->capacidadHistorial; i++) {
-        HistorialMedico& h = paciente->historial[i];
-        cout << "| " << setw(2) << h.idConsulta << " | "
-             << setw(10) << h.fecha << " | "
-             << setw(5) << h.hora << " | "
-             << setw(22) << h.diagnostico << " | "
-             << setw(10) << h.idDoctor << " | "
-             << setw(14) << fixed << setprecision(2) << h.costo << " |\n";
-    }
+    for (int i = 0; i < paciente->capacidadHistorial; i++) { 
+    HistorialMedico& h = paciente->historial[i];
+    cout << "| " << setw(2) << i + 1 << " | "
+         << setw(10) << h.fecha << " | "
+         << setw(5) << h.hora << " | "
+         << setw(20) << h.diagnostico << " | "
+         << setw(10) << h.idDoctor << " | "
+         << setw(14) << fixed << setprecision(2) << h.costo << " |\n";
+        }
 
-    cout << "+===============================================================================+\n";
+    cout << "+-----------------------------------------------------------------------------+\n";
 }
 HistorialMedico* obtenerUltimaConsulta(Paciente* paciente) {
     if (paciente->cantidadConsultas == 0) return nullptr;
