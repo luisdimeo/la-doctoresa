@@ -362,6 +362,22 @@ HistorialMedico* obtenerHistorialCompleto(Paciente* paciente, int* cantidad) {
     *cantidad = paciente->cantidadConsultas;
     return paciente->historial;
 }
+void agregarHistorial(Paciente* paciente, const char* fecha, const char* hora, const char* diagnostico, int idDoctor, float costo) {
+    if (paciente->capacidadHistorial >= 10) {
+        cout << "El historial está lleno.\n";
+        return;
+    }
+
+    HistorialMedico& h = paciente->historial[paciente->capacidadHistorial];
+    strcpy(h.fecha, fecha);
+    strcpy(h.hora, hora);
+    strcpy(h.diagnostico, diagnostico);
+    h.idDoctor = idDoctor;
+    h.costo = costo;
+
+    paciente->capacidadHistorial++;
+}
+
 void mostrarHistorialMedico(Hospital* hospital, int idPaciente) {
     Paciente* paciente = buscarPacientePorId(hospital, idPaciente);
     if (!paciente) {
@@ -798,8 +814,9 @@ int main() {
     cout << "| 7. Listar pacientes                  |\n";
     cout << "| 8. buscar paciente                   |\n";
     cout << "| 9. buscar doctor                     |\n";
-    cout << "|10. eliminar paciente                 |\n";
-    cout << "|11. eliminar doctor                   |\n";
+    cout << "| 10. buscar paciente parciales        |\n";
+    cout << "|11. eliminar paciente                 |\n";
+    cout << "|12. eliminar doctor                   |\n";
     cout << "| 0. Salir                             |\n";
     cout << "+--------------------------------------+\n";
     cout << "Seleccione una opcion: ";
@@ -819,33 +836,39 @@ int main() {
         case 1: {
             char nombre[50], apellido[50], cedula[20], tipoSangre[5];
             int edad;
-            int idPaciente;
-            char sexo;
+             char sexo;
+            Paciente nuevo;
+            nuevo.id = hospital.cantidadPacientes + 1;
             cout << "Nombre: "; cin.getline(nombre, 50);
             cout << "Apellido: "; cin.getline(apellido, 50);
             cout << "Cedula: "; cin.getline(cedula, 20);
             cout << "Edad: "; cin >> edad;
-            cout << "Tipo de sangre"; cin.getline(tipoSangre, 5);
-            cout << "id del paciente"; cin >> idPaciente;
             cout << "Sexo (M/F): "; cin >> sexo;
             cin.ignore();
             crearPaciente(&hospital, nombre, apellido, cedula, edad, sexo);
+            nuevo.capacidadHistorial = 0;
+            hospital.pacientes[hospital.cantidadPacientes] = nuevo;
+            hospital.cantidadPacientes++;
+            cout << "Paciente registrado con ID: " << nuevo.id << "\n";
             break;
         }
         case 2: {
             char nombre[50], apellido[50], cedula[20], especialidad[50];
             int experiencia;
-            int idDoctor;
             float costo;
+            Doctor nuevo;
+            nuevo.id = hospital.cantidadDoctores + 1;
             cout << "Nombre: "; cin.getline(nombre, 50);
             cout << "Apellido: "; cin.getline(apellido, 50);
             cout << "Cedula profesional: "; cin.getline(cedula, 20);
             cout << "Especialidad: "; cin.getline(especialidad, 50);
             cout << "tiempo de experiencia: "; cin >> experiencia;
-            cout << "id del doctor: ";cin >> idDoctor;
-            cout << "Costo de consulta: "; cin >> costo;
+             cout << "Costo de consulta: "; cin >> costo;
             cin.ignore();
             crearDoctor(&hospital, nombre, apellido, cedula, especialidad, experiencia, costo);
+            hospital.doctores[hospital.cantidadDoctores] = nuevo;
+            hospital.cantidadDoctores++;
+            cout << "Doctor registrado con ID: " << nuevo.id << "\n";
             break;
         }
         case 3: {
@@ -904,20 +927,19 @@ int main() {
 
         case 8: {
             char cedula[20];
-    cout << "Ingrese la cedula del paciente: ";
-    cin >> cedula;
-
-    Paciente* paciente = buscarPacientePorCedula(&hospital, cedula);
-    if (paciente) {
-        cout << "Paciente encontrado:\n";
-        cout << "Nombre: " << paciente->nombre << "\n";
-        cout << "Apellido: " << paciente->apellido << "\n";
-        cout << "Edad: " << paciente->edad << "\n";
-    } else {
-        cout << " Paciente no encontrado.\n";
-    }
-    break;
-
+            cout << "Ingrese la cedula del paciente: ";
+            cin >> cedula;
+            Paciente* paciente = buscarPacientePorCedula(&hospital, cedula);
+            if (paciente) {
+                cout << "Paciente encontrado:\n";
+                cout << "Nombre: " << paciente->nombre << "\n";
+                cout << "Apellido: " << paciente->apellido << "\n";
+                cout << "Edad: " << paciente->edad << "\n";
+             } 
+             else {
+                cout << " Paciente no encontrado.\n";
+            }
+            break;
         }
         case 9: {
              char especialidad[50];
@@ -929,20 +951,6 @@ int main() {
              break;
         }
         case 10: {
-            int idPaciente;
-            cout << "ID del paciente: ";
-            cin >> idPaciente;
-            mostrarHistorialMedico(&hospital, idPaciente);
-            break;
-        }
-        case 11: {
-            int idDoctor;
-            cout << "ID del doctor a eliminar: ";
-            cin >> idDoctor;
-            eliminarDoctor(&hospital, idDoctor);
-            break;
-        }
-        case 12: {
             char nombreParcial[50];
              cout << "Ingrese parte del nombre del paciente: ";
              cin.ignore();
@@ -950,6 +958,20 @@ int main() {
              buscarPacientesPorNombreParcial(&hospital, nombreParcial);
              break;
             }
+        case 11: {
+            int idPaciente;
+            cout << "ID del paciente: ";
+            cin >> idPaciente;
+            mostrarHistorialMedico(&hospital, idPaciente);
+            break;
+        }
+        case 12: {
+            int idDoctor;
+            cout << "ID del doctor a eliminar: ";
+            cin >> idDoctor;
+            eliminarDoctor(&hospital, idDoctor);
+            break;
+        }
 
         case 0:
             cout << "Gracias por usar el sistema del hospital.\n";
