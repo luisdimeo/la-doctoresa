@@ -209,7 +209,7 @@ Paciente** buscarPacientesPorNombre(Hospital* hospital, const char* nombre, int*
 }
 bool validarCedula(const char* cedula);
 
-Paciente* crearPaciente(Hospital* hospital, const char* nombre, const char* apellido, const char* cedula, int edad, char sexo) {
+Paciente* crearPaciente(Hospital* hospital, const char* nombre, const char* apellido, const char* cedula, int edad, char sexo, const char* telefono, const char* direccion, const char* email) {
     if (!validarCedula(cedula)) return nullptr;
 
     if (buscarPacientePorCedula(hospital, cedula) != nullptr) return nullptr;
@@ -382,28 +382,7 @@ void agregarHistorial(Paciente* paciente) {
         cout << " El historial está lleno.\n";
         return;
     }
-
-    HistorialMedico& h = paciente->historial[paciente->capacidadHistorial];
-
-    cout << "Fecha (dd/mm/aaaa): ";
-    cin.getline(h.fecha, 20);
-
-    cout << "Hora (hh:mm): ";
-    cin.getline(h.hora, 10);
-
-    cout << "Diagnóstico: ";
-    cin.getline(h.diagnostico, 100);
-
-    cout << "ID del doctor: ";
-    cin >> h.idDoctor;
-    cin.ignore();
-
-    cout << "Costo: ";
-    cin >> h.costo;
-    cin.ignore();
-
-    paciente->capacidadHistorial++;
-    cout << "Historial agregado correctamente.\n";
+    
 }
 
 void mostrarHistorialMedico(Hospital* hospital, int idPaciente) {
@@ -571,8 +550,8 @@ void listarPacientesDeDoctor(Hospital* hospital, int idDoctor) {
 }
 
 void listarDoctores(Hospital* hospital) {
-    cout << "\n+===============================================================+\n";
-    cout << "|                       LISTA DE DOCTORES                      |\n";
+    cout << "\n+-------------------------------------------------------------------+\n";
+    cout << "|                       LISTA DE DOCTORES                             |\n";
     cout << "+-----+------------------------+----------------+---------------------+\n";
     cout << "| ID  | NOMBRE COMPLETO        | CEDULA         | ESPECIALIDAD        |\n";
     cout << "+-----+------------------------+----------------+---------------------+\n";
@@ -585,8 +564,7 @@ void listarDoctores(Hospital* hospital) {
              << setw(14) << d.cedula << " | "
              << setw(19) << d.especialidad << " |\n";
     }
-
-    cout << "+-----+------------------------+----------------+---------------------+\n";
+cout << "+-----+------------------------+----------------+---------------------+\n";
 }
 
 
@@ -863,17 +841,22 @@ int main() {
     switch (opcion) {
         case 1: {
             char nombre[50], apellido[50], cedula[20], tipoSangre[5];
+            char telefono[20], direccion[100], email[50];
             int edad;
-             char sexo;
+            char sexo;
             Paciente nuevo;
             nuevo.id = hospital.cantidadPacientes + 1;
             cout << "Nombre: "; cin.getline(nombre, 50);
             cout << "Apellido: "; cin.getline(apellido, 50);
             cout << "Cedula: "; cin.getline(cedula, 20);
+            cout << "Tipo de sangre: "; cin.getline(tipoSangre, 5);
+            cout << "Telefono: "; cin.getline(telefono, 20);
+            cout << "Dirección: "; cin.getline(direccion, 100);
+            cout << "Email: "; cin.getline(email, 50);
             cout << "Edad: "; cin >> edad;
             cout << "Sexo (M/F): "; cin >> sexo;
             cin.ignore();
-            crearPaciente(&hospital, nombre, apellido, cedula, edad, sexo);
+            crearPaciente(&hospital, nombre, apellido, cedula, edad, sexo, telefono, email, direccion);
             nuevo.capacidadHistorial = 0;
             hospital.pacientes[hospital.cantidadPacientes] = nuevo;
             hospital.cantidadPacientes++;
@@ -882,6 +865,7 @@ int main() {
         }
         case 2: {
             char nombre[50], apellido[50], cedula[20], especialidad[50];
+            char horarioAtencion[50], telefono[20], email[50];
             int experiencia;
             float costo;
             Doctor nuevo;
@@ -890,9 +874,12 @@ int main() {
             cout << "Apellido: "; cin.getline(apellido, 50);
             cout << "Cedula profesional: "; cin.getline(cedula, 20);
             cout << "Especialidad: "; cin.getline(especialidad, 50);
-            cout << "tiempo de experiencia: "; cin >> experiencia;
-             cout << "Costo de consulta: "; cin >> costo;
-            cin.ignore();
+            cout << "Horario de atención: "; cin.getline(horarioAtencion, 50);
+            cout << "Teléfono: "; cin.getline(telefono, 20);
+            cout << "Email: "; cin.getline(email, 50);
+            cout << "Tiempo de experiencia: "; cin >> experiencia;
+            cout << "Costo de consulta: "; cin >> costo;
+            cin.ignore(); 
             crearDoctor(&hospital, nombre, apellido, cedula, especialidad, experiencia, costo);
             hospital.doctores[hospital.cantidadDoctores] = nuevo;
             hospital.cantidadDoctores++;
@@ -907,8 +894,7 @@ int main() {
             cin.ignore();
             cout << "Fecha (dd/mm/yyyy): "; cin.getline(fecha, 11);
             cout << "Hora (hh:mm): "; cin.getline(hora, 6);
-            cout << "Cita ID: " << hospital.siguienteIdCita - 1 << "\n";
-            agendarCita(&hospital, idPaciente, idDoctor, fecha, hora);
+
             break;
         }
         case 4: {
@@ -940,12 +926,27 @@ int main() {
             break;
         }
         case 5: {
-            int idPaciente;
-            cout << "ID del paciente: "; cin >> idPaciente;
-            mostrarHistorialMedico(&hospital, idPaciente); 
-            break;
+    int idBuscado;
+    cout << "Ingrese el ID del paciente: ";
+    cin >> idBuscado;
+    cin.ignore();
 
+    bool encontrado = false;
+    for (int i = 0; i < hospital.cantidadPacientes; i++) {
+        if (hospital.pacientes[i].id == idBuscado) {
+            void mostrarHistorial(Paciente* paciente);
+
+            mostrarHistorial(&hospital.pacientes[i]);
+            encontrado = true;
+            break; // ← este break termina el for, no el case
         }
+    }
+    if (!encontrado) {
+        cout << " No se encontró ningún paciente con ese ID.\n";
+    }
+    break;
+}  // ✅ este break termina el case 5
+
         case 6:
             listarDoctores(&hospital);
             break;
@@ -1017,6 +1018,8 @@ delete[] hospital.doctores;
 delete[] hospital.citas;
 
 destruirHospital(&hospital);
+void agregarHistorial(Paciente* paciente);
+void mostrarHistorial(Paciente* paciente);
 
 return 0;
 }
