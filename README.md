@@ -27,5 +27,5 @@ lMedico: estructura que almacena consultas atendidas.
 
 Hospital: estructura principal que contiene arreglos de pacientes, doctores y citas, junto con contadores de capacidad.
 
-🖥️ Menú interactivo
+ Menú interactivo
 El programa presenta un menú principal con 13 opciones, desde registrar hasta eliminar entidades. Cada opción está implementada como un case dentro de un switch, y el menú se repite hasta que el usuario selecciona salir (opción 0).
