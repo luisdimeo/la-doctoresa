@@ -641,6 +641,9 @@ bool eliminarDoctor(Hospital* hospital, int id) {
 
 //Gestion de citas
 void agendarCita(Hospital* hospital, int idPaciente, int idDoctor, const char* fecha, const char* hora) {
+    if (hospital->cantidadCitas >= hospital->capacidadCitas) {
+    redimensionarCitas(hospital, hospital->capacidadCitas * 2);
+}
     for (int i = 0; i < hospital->cantidadCitas; i++) {
         Cita& cita = hospital->citas[i];
         if (cita.idDoctor == idDoctor &&
@@ -649,7 +652,10 @@ void agendarCita(Hospital* hospital, int idPaciente, int idDoctor, const char* f
             cout << " Ya existe una cita con el doctor en esa fecha y hora.\n";
             return;
         }
+        
     }
+Cita nueva; nueva.id = hospital->siguienteIdCita++;
+hospital->citas[hospital->cantidadCitas++] = nueva;
 
     // Verificar capacidad
     if (hospital->cantidadCitas >= hospital->capacidadCitas) {
@@ -762,6 +768,17 @@ void redimensionarCitasDoctor(Doctor* doctor) {
     delete[] doctor->citasAgendadas;
     doctor->citasAgendadas = nuevoArray;
     doctor->capacidadCitas = nuevaCapacidad;
+}
+void redimensionarCitas(Hospital* hospital, int nuevaCapacidad) {
+    Cita* nuevoArreglo = new Cita[nuevaCapacidad];
+
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        nuevoArreglo[i] = hospital->citas[i];
+    }
+
+    delete[] hospital->citas;
+    hospital->citas = nuevoArreglo;
+    hospital->capacidadCitas = nuevaCapacidad;
 }
 
 void destruirHospital(Hospital* hospital) {
@@ -986,16 +1003,20 @@ int main() {
             }
             break;
         }
-
-
-        case 6:
+        case 6:{
+           int idCancelar;
+           cout << "Ingrese el ID de la cita que desea cancelar: ";
+           cin >> idCancelar;
+           cancelarCita(&hospital, idCancelar);
+        }
+        case 7:
             listarDoctores(&hospital);
             break;
-        case 7:
+        case 8:
             listarPacientes(&hospital);
             break;
 
-        case 8: {
+        case 9: {
             char cedula[20];
             cout << "Ingrese la cedula del paciente: ";
             cin >> cedula;
@@ -1011,7 +1032,7 @@ int main() {
             }
             break;
         }
-        case 9: {
+        case 10: {
              char especialidad[50];
              int*cantidad;
              cout << "Ingrese la especialidad a buscar: ";
@@ -1021,7 +1042,7 @@ int main() {
              buscarDoctoresPorEspecialidad(&hospital, especialidad, cantidad );
              break;
         }
-        case 10: {
+        case 11: {
             char nombreParcial[50];
              cout << "Ingrese parte del nombre del paciente: ";
              cin.ignore();
@@ -1029,7 +1050,7 @@ int main() {
              buscarPacientesPorNombreParcial(&hospital, nombreParcial);
              break;
             }
-        case 11: {
+        case 12: {
             int idPaciente;
             cout << "Ingrese el ID del paciente: ";
             cin >> idPaciente;
@@ -1037,13 +1058,13 @@ int main() {
             bool encontrado = false;
             for (int i = 0; i < hospital.cantidadPacientes; i++) {
                 if (hospital.pacientes[i].id == idPaciente) {
-                    mostrarHistorial(&hospital.pacientes[i]); // ✅ tipo correcto
+                    mostrarHistorial(&hospital.pacientes[i]); 
                     encontrado = true;
                 }
                  break;
                 }
             }
-        case 12: {
+        case 13: {
             int idDoctor;
             cout << "ID del doctor a eliminar: ";
             cin >> idDoctor;
