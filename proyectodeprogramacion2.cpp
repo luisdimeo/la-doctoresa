@@ -2,7 +2,7 @@
 #include <cstring>
 #include <ctime>
 #include <iomanip>
-#include <fstream>
+
 using namespace std;   
 
 // Compatibility prototype for case-insensitive compare (defined later)
@@ -20,10 +20,6 @@ struct HistorialMedico {
     char medicamentos[150];
     int idDoctor;
     float costo;
-    int pacienteID;
-    int siguienteConsultaID;
-
-    bool eliminado;
 };
 
 // Estructura Paciente
@@ -39,23 +35,18 @@ struct Paciente {
     char direccion[100];
     char email[50];
 
-
+    HistorialMedico* historial;
     int cantidadConsultas;
-    int primerConsultaID;
+    int capacidadHistorial;
 
-     
+    int* citasAgendadas;
     int cantidadCitas;
-    int citasIDs[20];
-    
+    int capacidadCitas;
 
     char alergias[500];
     char observaciones[500];
 
     bool activo;
-
-    bool eliminado;
-    time_t fechaCreacion;
-    time_t fechaModificacion;
 };
 
 // Estructura Doctor
@@ -71,17 +62,15 @@ struct Doctor {
     char telefono[15];
     char email[50];
 
-    int doctoresID [50];
+    int* pacientesAsignados;
     int cantidadPacientes;
     int capacidadPacientes;
 
-    int citasagendadas;
+    int* citasAgendadas;
     int cantidadCitas;
     int capacidadCitas;
 
     bool disponible;
-
-    bool eliminado;
 };
 
 // Estructura Cita
@@ -95,75 +84,32 @@ struct Cita {
     char estado[20];
     char observaciones[200];
     bool atendida;
-    int consultaID;
-
-    bool eliminado;
 };
 
 struct Hospital {
     char nombre[100];
     char direccion[150];
     char telefono[15];
-    
+
+    Paciente* pacientes;
+    int cantidadPacientes;
+    int capacidadPacientes;
+
+    Doctor* doctores;
+    int cantidadDoctores;
+    int capacidadDoctores;
+
+    Cita* citas;
+    int cantidadCitas;
+    int capacidadCitas;
+
     int siguienteIdPaciente;
     int siguienteIdDoctor;
     int siguienteIdCita;
     int siguienteIdConsulta;
 
-    int totalPacientesRegistrados; // Reemplaza a cantidadPacientes
-    int totalDoctoresRegistrados; // Reemplaza a cantidadDoctores
-    int totalCitasAgendadas;
-    int totalConsultasRealizadas;
-
     //gestion del paciente
 };
-struct ArchivoHeader {
-    int cantidadRegistros;      // Total de registros escritos
-    int proximoID;              // Siguiente ID a asignar
-    int registrosActivos;       // Registros con eliminado == false
-    int version;                // Para control de formato (ej: 1)
-};
-
-bool inicializarArchivo(const char* nombreArchivo) {
-    fstream archivo(nombreArchivo, ios::binary | ios::out);
-    if (!archivo.is_open()) return false;
-    
-    ArchivoHeader header = {0, 1, 0, 1}; 
-    archivo.write((char*)&header, sizeof(ArchivoHeader));
-    archivo.close();
-    return true;
-}
-
-
-ArchivoHeader leerHeader(const char* nombreArchivo) {
-    ArchivoHeader header;
-    ifstream archivo(nombreArchivo, ios::binary);
-    if (!archivo.is_open()) return header; 
-    
-    archivo.read((char*)&header, sizeof(ArchivoHeader));
-    archivo.close();
-    return header;
-}
-
-// Actualiza el header (SOBREESCRIBE el inicio del archivo)
-bool actualizarHeader(const char* nombreArchivo, ArchivoHeader header) {
-    // Abre en modo IN/OUT para no borrar el archivo
-    fstream archivo(nombreArchivo, ios::binary | ios::in | ios::out);
-    if (!archivo.is_open()) return false;
-    
-    archivo.seekp(0, ios::beg); // Posicionarse al inicio
-    archivo.write((char*)&header, sizeof(ArchivoHeader));
-    archivo.close();
-    return true;
-}
-
-// --- FUNCIONES DE ACCESO ALEATORIO ---
-
-// CALCULA la posición en bytes de un registro
-long calcularPosicion(int indice, size_t tamanoRegistro) {
-    // Fórmula clave: saltar el header + (indice * tamaño)
-    return sizeof(ArchivoHeader) + (indice * tamanoRegistro);
-}
 Hospital* inicializarHospital(const char* nombre, int capacidadInicial) {
     Hospital* hospital = new Hospital;
     strncpy(hospital->nombre, nombre, 100);
@@ -266,34 +212,44 @@ Paciente** buscarPacientesPorNombre(Hospital* hospital, const char* nombre, int*
 }
 bool validarCedula(const char* cedula);
 
-bool agregarPaciente(Paciente nuevoPaciente) {
-    const char* archivoBin = "pacientes.bin";
-    
-    // 1. Leer header para obtener ID y contadores
-    ArchivoHeader header = leerHeader(archivoBin);
-    
-    // 2. Asignar metadata
-    nuevoPaciente.id = header.proximoID;
-    nuevoPaciente.eliminado = false;
-    nuevoPaciente.fechaCreacion = time(NULL);
-    nuevoPaciente.fechaModificacion = time(NULL);
-    // ... inicializar sus arrays fijos (citasIDs)
-    
-    // 3. Abrir en modo 'append' (añadir al final)
-    fstream archivo(archivoBin, ios::binary | ios::app);
-    if (!archivo.is_open()) return false;
-    
-    // 4. Escribir el nuevo registro
-    archivo.write((char*)&nuevoPaciente, sizeof(Paciente));
-    archivo.close();
-    
-    // 5. Actualizar y guardar el header
-    header.cantidadRegistros++;
-    header.proximoID++;
-    header.registrosActivos++;
-    actualizarHeader(archivoBin, header);
-    
-    return true;
+Paciente* crearPaciente(Hospital* hospital, const char* nombre, const char* apellido, const char* cedula, int edad, char sexo, const char* telefono, const char* direccion, const char* email) {
+    if (!validarCedula(cedula)) return nullptr;
+
+    if (buscarPacientePorCedula(hospital, cedula) != nullptr) return nullptr;
+
+    if (hospital->cantidadPacientes >= hospital->capacidadPacientes) {
+        redimensionarArrayPacientes(hospital);
+    }
+
+    Paciente& nuevo = hospital->pacientes[hospital->cantidadPacientes];
+    nuevo.id = hospital->siguienteIdPaciente++;
+    strncpy(nuevo.nombre, nombre, 50);
+    strncpy(nuevo.apellido, apellido, 50);
+    strncpy(nuevo.cedula, cedula, 20);
+    strcpy(nuevo.telefono, telefono);
+    strcpy(nuevo.direccion, direccion);
+    strcpy(nuevo.email, email);
+
+    nuevo.edad = edad;
+    nuevo.sexo = sexo;
+    strcpy(nuevo.tipoSangre, "");
+    strcpy(nuevo.telefono, "");
+    strcpy(nuevo.direccion, "");
+    strcpy(nuevo.email, "");
+    strcpy(nuevo.alergias, "");
+    strcpy(nuevo.observaciones, "");
+    nuevo.activo = true;
+
+    nuevo.capacidadHistorial = 0;
+    nuevo.cantidadConsultas = 0;
+    nuevo.historial = new HistorialMedico[nuevo.capacidadHistorial];
+
+    nuevo.capacidadCitas = 5;
+    nuevo.cantidadCitas = 0;
+    nuevo.citasAgendadas = new int[nuevo.capacidadCitas];
+
+    hospital->cantidadPacientes++;
+    return &nuevo;
 }
 bool actualizarPaciente(Hospital* hospital, int id) {
     Paciente* p = buscarPacientePorId(hospital, id);
@@ -1147,8 +1103,4 @@ destruirHospital(&hospital);
 
 return 0;
 }
-
-
-
-
 
