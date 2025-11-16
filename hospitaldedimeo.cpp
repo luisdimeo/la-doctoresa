@@ -3,6 +3,7 @@
 #include <ctime>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
 using namespace std;   
 
 // Compatibility prototype for case-insensitive compare (defined later)
@@ -21,14 +22,14 @@ struct HistorialMedico {
     int idDoctor;
     float costo;
     int pacienteID;
-    int siguienteConsultaID;
+    int siguienteConsultaID; // Para listas enlazadas en archivo (avanzado)
 
-    bool eliminado;
+    bool activo = true;
 };
 
 // Estructura Paciente
 struct Paciente {
-    int id;
+    int id = 0;
     char nombre[50];
     char apellido[50];
     char cedula[20];
@@ -40,22 +41,15 @@ struct Paciente {
     char email[50];
 
 
-    int cantidadConsultas;
-    int primerConsultaID;
+    int citasIDs[20]; 
+    int cantidadCitas = 0;
 
-     
-    int cantidadCitas;
-    int citasIDs[20];
-    
+    int primerConsultaID; 
 
     char alergias[500];
     char observaciones[500];
 
-    bool activo;
-
-    bool eliminado;
-    time_t fechaCreacion;
-    time_t fechaModificacion;
+    bool activo = true;
 };
 
 // Estructura Doctor
@@ -79,25 +73,19 @@ struct Doctor {
     int cantidadCitas;
     int capacidadCitas;
 
-    bool disponible;
-
-    bool eliminado;
+    bool activo = true;
 };
 
 // Estructura Cita
 struct Cita {
-    int id;
-    int idPaciente;
-    int idDoctor;
+    int id = 0;
+    int pacienteID;
+    int doctorID;
     char fecha[11];
     char hora[6];
-    char motivo[150];
-    char estado[20];
-    char observaciones[200];
-    bool atendida;
-    int consultaID;
-
-    bool eliminado;
+    char motivo[100];
+    bool completada = false;
+    bool activa = true;
 };
 
 struct Hospital {
@@ -117,6 +105,24 @@ struct Hospital {
 
     //gestion del paciente
 };
+// Esta estructura se almacenará en RAM y se sincronizará con "hospital.bin"
+struct HospitalMetadata {
+    // Contadores para asignar el SIGUIENTE ID (reemplaza a siguienteIdPaciente, etc.)
+    int nextPacienteID = 1; 
+    int nextDoctorID = 1; 
+    int nextCitaID = 1; 
+    int nextHistorialID = 1;
+    
+    // Contadores de registros activos (reemplaza a cantidadPacientes, etc.)
+    int cantidadPacientesActivos = 0;
+    int cantidadDoctoresActivos = 0;
+    int cantidadCitasActivas = 0;
+    // (Puedes agregar campos para nombre, dirección, etc. si lo necesitas)
+};
+
+// Variable global para mantener el estado del sistema en memoria
+HospitalMetadata hospital;
+
 struct ArchivoHeader {
     int cantidadRegistros;      // Total de registros escritos
     int proximoID;              // Siguiente ID a asignar
@@ -156,70 +162,64 @@ bool actualizarHeader(const char* nombreArchivo, ArchivoHeader header) {
     archivo.close();
     return true;
 }
+Paciente leerPacientePorIndice(int indice) {
+    Paciente p;
+    ifstream archivo("pacientes.bin", ios::binary);
+    if (!archivo.is_open()) return p; // Devuelve paciente vacío
 
-// --- FUNCIONES DE ACCESO ALEATORIO ---
-
-// CALCULA la posición en bytes de un registro
-long calcularPosicion(int indice, size_t tamanoRegistro) {
-    // Fórmula clave: saltar el header + (indice * tamaño)
-    return sizeof(ArchivoHeader) + (indice * tamanoRegistro);
-}
-Hospital* inicializarHospital(const char* nombre, int capacidadInicial) {
-    Hospital* hospital = new Hospital;
-    strncpy(hospital->nombre, nombre, 100);
-    strcpy(hospital->direccion, "");
-    strcpy(hospital->telefono, "");
-
-    hospital->capacidadPacientes = capacidadInicial;
-    hospital->cantidadPacientes = 0;
-    hospital->pacientes = new Paciente[capacidadInicial];
-
-    hospital->capacidadDoctores = capacidadInicial;
-    hospital->cantidadDoctores = 0;
-    hospital->doctores = new Doctor[capacidadInicial];
-
-    hospital->capacidadCitas = capacidadInicial * 2;
-    hospital->cantidadCitas = 0;
-    hospital->citas = new Cita[hospital->capacidadCitas];
-
-    hospital->siguienteIdPaciente = 1;
-    hospital->siguienteIdDoctor = 1;
-    hospital->siguienteIdCita = 1;
-    hospital->siguienteIdConsulta = 1;
-
-    return hospital;
+    // 1. Calcular posición exacta
+    long posicion = calcularPosicion(indice, sizeof(Paciente));
+    
+    // 2. Ir directamente a esa posición (¡Magia!)
+    archivo.seekg(posicion);
+    
+    // 3. Leer SOLO ese registro
+    archivo.read((char*)&p, sizeof(Paciente));
+    
+    archivo.close();
+    return p;
 }
 
-Paciente* buscarPacientePorId(Hospital* hospital, int id) {
-    for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        if (hospital->pacientes[i].id == id) {
-            return &hospital->pacientes[i];
+int buscarIndiceDeID(int id) {
+    ifstream archivo("pacientes.bin", ios::binary);
+    if (!archivo.is_open()) return -1;
+    
+    ArchivoHeader header;
+    archivo.read((char*)&header, sizeof(ArchivoHeader)); // Lee el header
+    
+    Paciente temp;
+    for (int i = 0; i < header.cantidadRegistros; i++) {
+        archivo.read((char*)&temp, sizeof(Paciente));
+        if (temp.id == id && !temp.eliminado) {
+            archivo.close();
+            return i; // ¡Encontrado! Este es el índice
         }
     }
-    return nullptr;
-
-
+    archivo.close();
+    return -1; // No encontrado
 }
-void redimensionarArrayPacientes(Hospital* hospital) {
-    int nuevaCapacidad = hospital->capacidadPacientes * 2;
-    Paciente* nuevoArray = new Paciente[nuevaCapacidad];
 
-    for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        nuevoArray[i] = hospital->pacientes[i];
+Paciente buscarPacientePorCedula_BIN(const char* cedula) {
+    Paciente p;
+    p.id = 0; // Marcar como no encontrado por defecto
+    
+    // Abrir archivo para lectura
+    std::ifstream file("pacientes.bin", std::ios::binary); 
+    
+    if (!file.is_open()) {
+        cerr << "Error: No se pudo abrir pacientes.bin para lectura." << endl;
+        return p;
     }
-
-    delete[] hospital->pacientes;
-    hospital->pacientes = nuevoArray;
-    hospital->capacidadPacientes = nuevaCapacidad;
-}
-
-Paciente* buscarPacientePorCedula(Hospital* hospital, const char* cedula) {
-    for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        if (strcasecmp_compat(hospital->pacientes[i].cedula, cedula) == 0) {
-            return &hospital->pacientes[i];
+    while (file.read(reinterpret_cast<char*>(&p), sizeof(Paciente))) {
+        
+        if (p.activo && strcasecmp_compat(p.cedula, cedula) == 0) {
+            file.close();
+            return p; 
         }
     }
-    return nullptr;
+
+    file.close();
+    return p; // Retorna el Paciente no encontrado (ID=0)
 }
 
 char toLower(char c) {
@@ -245,27 +245,55 @@ bool contieneSubcadena(const char* haystack, const char* needle) {
     }
     return false;
 }
-Paciente** buscarPacientesPorNombre(Hospital* hospital, const char* nombre, int* cantidad) {
+Paciente* buscarPacientesPorNombre_BIN(const char* nombre, int* cantidad) {
     *cantidad = 0;
-    for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        if (contieneSubcadena(hospital->pacientes[i].nombre, nombre)) {
+    Paciente tempPaciente; 
+    
+    // 1. Abrir el archivo para la PRIMERA PASADA (Conteo)
+    std::ifstream file("pacientes.bin", std::ios::binary); 
+    
+    if (!file.is_open()) {
+        cerr << "Error: No se pudo abrir pacientes.bin para lectura." << endl;
+        return nullptr;
+    }
+    
+    // 1.1. Primera Pasada: Contar coincidencias
+    while (file.read(reinterpret_cast<char*>(&tempPaciente), sizeof(Paciente))) {
+        // Verificar si está activo Y si el nombre coincide parcialmente
+        if (tempPaciente.activo && contieneSubcadena(tempPaciente.nombre, nombre)) {
             (*cantidad)++;
         }
     }
+    
+    // 1.2. Cerrar y verificar
+    file.close(); 
+    
+    if (*cantidad == 0) {
+        return nullptr; // No se encontró nada
+    }
 
-    if (*cantidad == 0) return nullptr;
-
-    Paciente** resultados = new Paciente*[*cantidad];
+    Paciente* resultados = new Paciente[*cantidad];
     int index = 0;
-    for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        if (contieneSubcadena(hospital->pacientes[i].nombre, nombre)) {
-            resultados[index++] = &hospital->pacientes[i];
+
+    file.open("pacientes.bin", std::ios::binary); 
+
+    if (!file.is_open()) {
+        delete[] resultados;
+        *cantidad = 0;
+        return nullptr; 
+    }
+    
+    while (file.read(reinterpret_cast<char*>(&tempPaciente), sizeof(Paciente))) {
+        if (tempPaciente.activo && contieneSubcadena(tempPaciente.nombre, nombre)) {
+            resultados[index++] = tempPaciente; 
+            
+            if (index >= *cantidad) break; 
         }
     }
+    
+    file.close();
     return resultados;
 }
-bool validarCedula(const char* cedula);
-
 bool agregarPaciente(Paciente nuevoPaciente) {
     const char* archivoBin = "pacientes.bin";
     
@@ -295,51 +323,54 @@ bool agregarPaciente(Paciente nuevoPaciente) {
     
     return true;
 }
-bool actualizarPaciente(Hospital* hospital, int id) {
-    Paciente* p = buscarPacientePorId(hospital, id);
-    if (!p) return false;
+bool validarCedula(const char* cedula);
+bool actualizarPaciente(Paciente pacienteModificado) {
+    // 1. Buscar el ÍNDICE (posición) del paciente
+    int indice = buscarIndiceDeID(pacienteModificado.id);
+    if (indice == -1) return false; // No existe
 
-    cout << "Nuevo teléfono: ";
-    cin.getline(p->telefono, 15);
-    cout << "Nueva dirección: ";
-    cin.getline(p->direccion, 100);
-    cout << "Nuevo email: ";
-    cin.getline(p->email, 50);
-    cout << "Alergias: ";
-    cin.getline(p->alergias, 500);
-    cout << "Observaciones: ";
-    cin.getline(p->observaciones, 500);
+    // 2. Calcular la posición en BYTES
+    long posicion = calcularPosicion(indice, sizeof(Paciente));
+    
+    // 3. Abrir en modo IN/OUT (para sobrescribir)
+    fstream archivo("pacientes.bin", ios::binary | ios::in | ios::out);
+    if (!archivo.is_open()) return false;
+    
+    // 4. Actualizar metadata
+    pacienteModificado.fechaModificacion = time(NULL);
 
-    return true;
-}
-bool eliminarPaciente(Hospital* hospital, int id) {
-    int index = -1;
-    for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        if (hospital->pacientes[i].id == id) {
-            index = i;
-            break;
-        }
-    }
-    int idPaciente;
-cout << "ID del paciente: ";
-cin >> idPaciente;
-
-    if (index == -1) {
-        cout << " Paciente con ID " << idPaciente << " no encontrado.\n";
-    }
-
-    delete[] hospital->pacientes[index].historial;
-    delete[] hospital->pacientes[index].citasAgendadas;
-
-    for (int i = index; i < hospital->cantidadPacientes - 1; i++) {
-        hospital->pacientes[i] = hospital->pacientes[i + 1];
-    }
-
-    hospital->cantidadPacientes--;
+    // 5. Posicionarse para ESCRIBIR
+    archivo.seekp(posicion);
+    
+    // 6. Sobrescribir el registro completo
+    archivo.write((char*)&pacienteModificado, sizeof(Paciente));
+    
+    archivo.close();
     return true;
 }
 
-void listarPacientes(Hospital* hospital) {
+bool eliminarPaciente(int id) {
+    // 1. Buscar el ÍNDICE
+    int indice = buscarIndiceDeID(id);
+    if (indice == -1) return false;
+
+    // 2. LEER el paciente en esa posición
+    Paciente p = leerPacientePorIndice(indice);
+    
+    // 3. Marcar como eliminado
+    p.eliminado = true;
+    
+    // 4. ACTUALIZAR (sobrescribir) el registro en el archivo
+    if (!actualizarPaciente(p)) return false; // Usa la función que ya hiciste
+
+    // 5. Actualizar el header
+    ArchivoHeader header = leerHeader("pacientes.bin");
+    header.registrosActivos--;
+    actualizarHeader("pacientes.bin", header);
+    
+    return true;
+}
+void listarTodosPacientes() {
     cout << "\n+---------------------------------------------------------------+\n";
     cout << "|                    LISTA DE PACIENTES                        |\n";
     cout << "+-----+----------------------+---------------+------+-----------+\n";
@@ -347,154 +378,201 @@ void listarPacientes(Hospital* hospital) {
     cout << "+-----+----------------------+---------------+------+-----------+\n";
 
 
-   for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        Paciente& p = hospital->pacientes[i];
-        cout << "| " << setw(3) << p.id << " | "
-             << setw(20) << left << p.nombre << " | "
-             << setw(13) << p.cedula << " | "
-             << setw(4) << p.edad << " | "
-             << setw(9) << p.capacidadHistorial << " |\n";
-    }
+   ifstream archivo("pacientes.bin", ios::binary);
+    if (!archivo.is_open()) return;
+
+    // 1. Leer header para saber cuántos hay
+    ArchivoHeader header;
+    archivo.read((char*)&header, sizeof(ArchivoHeader));
+
+    cout << "Listando " << header.registrosActivos << " pacientes...\n";
     
+    Paciente temp; // UNA sola variable temporal
+    for (int i = 0; i < header.cantidadRegistros; i++) {
+        // 2. Leer un registro a la vez
+        archivo.read((char*)&temp, sizeof(Paciente));
+        
+        // 3. Si no está eliminado, mostrarlo
+        if (!temp.eliminado) {
+            cout << "ID: " << temp.id << ", Nombre: " << temp.nombre << endl;
+            // ... imprimir resto de datos
+        }
+        // 4. En la siguiente iteración, 'temp' se sobrescribe.
+        //    (No se acumula en memoria)
+    }
+    archivo.close();
     cout << "+-----+----------------------+---------------+------+-----------+\n";
 }
-bool contieneTexto(const char* texto, const char* patron) {
-    return strstr(texto, patron) != nullptr;
-}
-
-void buscarPacientesPorNombreParcial(Hospital* hospital, const char* nombreParcial) {
+void buscarPacientesPorNombreParcial_BIN(const char* nombreParcial) {
+    Paciente p;
     bool encontrado = false;
 
-    cout << "+---------------------------------------------------------------+\n";
-    cout << "|              PACIENTES QUE COINCIDEN CON EL NOMBRE            |\n";
-    cout << "+-----+----------------------+---------------+------+-----------+\n";
-    cout << "| ID  | NOMBRE COMPLETO      | CÉDULA        | EDAD | CONSULTAS |\n";
-    cout << "+-----+----------------------+---------------+------+-----------+\n";
+    // 1. Abrir el archivo de pacientes para lectura binaria
+    std::ifstream file("pacientes.bin", std::ios::binary); 
+    
+    if (!file.is_open()) {
+        cout << "El archivo de pacientes no existe o no se pudo abrir." << endl;
+        return;
+    }
 
-    for (int i = 0; i < hospital->cantidadPacientes; i++) {
-        Paciente& p = hospital->pacientes[i];
-        if (contieneTexto(p.nombre, nombreParcial)) {
+    // 2. Imprimir encabezados de la tabla
+    cout << "\n+---------------------------------------------------------------+" << endl;
+    cout << "|             PACIENTES QUE COINCIDEN CON EL NOMBRE             |" << endl;
+    cout << "+-----+----------------------+---------------+------+-----------+" << endl;
+    cout << "| ID  | NOMBRE COMPLETO      | CÉDULA        | EDAD | CONSULTAS |" << endl;
+    cout << "+-----+----------------------+---------------+------+-----------+" << endl;
+
+    // 3. Lectura Secuencial: Iterar sobre el archivo binario
+    while (file.read(reinterpret_cast<char*>(&p), sizeof(Paciente))) {
+        // Verificar dos condiciones:
+        // a) El registro debe estar activo (borrado lógico)
+        // b) El nombre debe contener el patrón parcial
+        if (p.activo && contieneTexto(p.nombre, nombreParcial)) {
+            // 4. Mostrar el registro encontrado (Temporalmente en RAM)
             cout << "| " << setw(3) << p.id << " | "
                  << setw(20) << left << p.nombre << " "
                  << setw(15) << p.apellido << " | "
                  << setw(13) << p.cedula << " | "
                  << setw(4) << p.edad << " | "
-                 << setw(9) << p.capacidadHistorial << " |\n";
+                 << setw(9) << p.cantidadConsultas << " |" << endl; // Se usa cantidadConsultas
             encontrado = true;
         }
     }
+    
+    // 5. Cerrar el archivo
+    file.close(); 
 
+    // 6. Mensaje de resultado
     if (!encontrado) {
-        cout << "|        No se encontraron pacientes con ese nombre parcial. |\n";
+        cout << "| No se encontraron pacientes activos con el nombre parcial '" << setw(37) << left << nombreParcial << " |" << endl;
     }
 
-    cout << "+-----+----------------------+---------------+------+-----------+\n";
+    cout << "+-----+----------------------+---------------+------+-----------+" << endl;
 }
 
 //historial medico del pasciente 
-void agregarConsultaAlHistorial(Paciente* paciente, HistorialMedico consulta) {
-    if (paciente->cantidadConsultas >= paciente->capacidadHistorial) {
-        int nuevaCapacidad = paciente->capacidadHistorial * 2;
-        HistorialMedico* nuevoHistorial = new HistorialMedico[nuevaCapacidad];
+HistorialMedico* obtenerHistorialCompleto_BIN(int pacienteID, int* cantidad) {
+    *cantidad = 0;
+    
+    // 1. Obtener la información inicial del paciente
+    Paciente paciente = buscarPacientePorID(pacienteID);
 
-        for (int i = 0; i < paciente->cantidadConsultas; i++) {
-            nuevoHistorial[i] = paciente->historial[i];
-        }
-
-        delete[] paciente->historial;
-        paciente->historial = nuevoHistorial;
-        paciente->capacidadHistorial = nuevaCapacidad;
+    if (paciente.id == 0 || paciente.cantidadConsultas == 0) {
+        return nullptr;
     }
 
-    paciente->historial[paciente->cantidadConsultas] = consulta;
-    paciente->cantidadConsultas++;
-}
-HistorialMedico* obtenerHistorialCompleto(Paciente* paciente, int* cantidad) {
-    *cantidad = paciente->cantidadConsultas;
-    return paciente->historial;
-}
-void agregarHistorial(Paciente* paciente) {
-    if (paciente->capacidadHistorial >= 10) {
-        cout << " El historial está lleno.\n";
-        return;
-    }
- HistorialMedico nuevo;
-    nuevo.idConsulta = paciente->capacidadHistorial + 1;
-
-    cout << "Fecha (dd/mm/aaaa): ";
-    cin.getline(nuevo.fecha, 20);
-
-    cout << "Hora (hh:mm): ";
-    cin.getline(nuevo.hora, 10);
-
-    cout << "Diagnóstico: ";
-    cin.getline(nuevo.diagnostico, 100);
-
-    cout << "ID del doctor: ";
-    cin >> nuevo.idDoctor;
-    cin.ignore();
-
-    cout << "Costo: ";
-    cin >> nuevo.costo;
-    cin.ignore();
-
-    // Guardar en el arreglo del paciente
-    paciente->historial[paciente->capacidadHistorial] = nuevo;
-    paciente->capacidadHistorial++;
-
-    cout << "Historial agregado correctamente.\n";
-}
-bool atenderCita(Hospital* hospital, int idPaciente, const char* fecha, float costo) {
-    for (int i = 0; i < hospital->cantidadCitas; i++) {
-        Cita* cita = &hospital->citas[i];
-
-        if (cita->idPaciente == idPaciente && strcmp(cita->fecha, fecha) == 0 && strcmp(cita->estado, "pendiente") == 0) {
-            strcpy(cita->estado, "atendida");
-
-            for (int j = 0; j < hospital->cantidadPacientes; j++) {
-                if (hospital->pacientes[j].id == idPaciente) {
-                    Paciente* paciente = &hospital->pacientes[j];
-
-                    HistorialMedico nuevo;
-                    nuevo.idConsulta = paciente->capacidadHistorial + 1;
-                    strcpy(nuevo.fecha, cita->fecha);
-                    strcpy(nuevo.hora, cita->hora);
-                    strcpy(nuevo.diagnostico, cita->motivo);
-                    nuevo.idDoctor = cita->idDoctor;
-                    nuevo.costo = costo;
-
-                    paciente->historial[paciente->capacidadHistorial++] = nuevo;
-                    return true;
-                }
-            }
+    *cantidad = paciente.cantidadConsultas;
+    
+    // 2. Asignar la memoria en RAM para los resultados que se devolverán
+    HistorialMedico* resultados = new HistorialMedico[*cantidad];
+    int index = 0;
+    int currentID = paciente.primerConsultaID; 
+    
+    // 3. Recorrer la lista enlazada en el archivo
+    while (currentID != 0 && index < *cantidad) {
+        // Cargar el registro desde el archivo
+        HistorialMedico consulta = buscarHistorialPorID(currentID);
+        
+        if (consulta.idConsulta == currentID && consulta.activo) {
+            // Guardar en el array de resultados
+            resultados[index++] = consulta; 
+            // Avanzar al siguiente ID de la lista enlazada
+            currentID = consulta.siguienteConsultaID; 
+        } else {
+            // Si hay un error de lectura o el registro está inactivo/corrupto, detenerse
+            cerr << "Advertencia: Error de enlace o registro inactivo en historial. ID: " << currentID << endl;
+            break;
         }
     }
+    
+    return resultados;
+}
+bool atenderCita_BIN(int idPaciente, const char* fecha, float costo) {
+    // 1. Buscar la cita pendiente en el archivo citas.bin
+    Cita citaEncontrada = buscarCitaPendiente_BIN(idPaciente, fecha);
 
-    return false;
+    if (citaEncontrada.id == 0) {
+        cout << "ERROR: Cita pendiente para el paciente " << idPaciente << " en " << fecha << " no encontrada." << endl;
+        return false;
+    }
+
+    // 2. Modificar el estado de la cita en la RAM
+    citaEncontrada.completada = true; // Marcar como completada/atendida
+    // Opcionalmente: citaEncontrada.activa = false;
+    
+    // 3. Sobreescribir el registro de Cita en el archivo citas.bin
+    if (!modificarCita_BIN(citaEncontrada)) {
+        cout << "ERROR: No se pudo actualizar el registro de la cita en el disco." << endl;
+        return false;
+    }
+    
+    // 4. Crear el nuevo registro de Historial Médico
+    HistorialMedico nuevoHistorial;
+    // El ID se asigna en la función de historial
+    nuevoHistorial.pacienteID = idPaciente; 
+    strcpy(nuevoHistorial.fecha, citaEncontrada.fecha);
+    strcpy(nuevoHistorial.hora, citaEncontrada.hora);
+    // En el código original, el diagnóstico era el motivo de la cita.
+    strcpy(nuevoHistorial.diagnostico, citaEncontrada.motivo); 
+    nuevoHistorial.idDoctor = citaEncontrada.doctorID; 
+    nuevoHistorial.costo = costo; // Costo viene como parámetro
+    nuevoHistorial.activo = true;
+    
+    // 5. Agregar la consulta al historial (utilizando la lógica de enlace creada previamente)
+    
+    // NOTA: Esta función DEBE existir y manejar la asignación de nextHistorialID, 
+    // la escritura en historiales.bin y el enlace de la lista del paciente.
+    // La firma es simplificada a:
+    // void agregarConsultaAlHistorial_BIN(int pacienteID, const HistorialMedico& consulta);
+    
+    // Usamos la función del paso anterior para manejar el archivo de historial.
+    agregarHistorial_BIN(idPaciente, nuevoHistorial); 
+
+    cout << "Cita (" << citaEncontrada.id << ") marcada como atendida y historial actualizado para el paciente " << idPaciente << endl;
+    return true;
 }
 
-void mostrarHistorial(Paciente* paciente) {
-    if (paciente->capacidadHistorial == 0) {
-        cout << " Este paciente no tiene historial médico registrado.\n";
+void mostrarHistorial_BIN(int idPaciente) {
+    // 1. Obtener el paciente para verificación
+    Paciente paciente = buscarPacientePorID(idPaciente);
+
+    if (paciente.id == 0 || !paciente.activo) {
+        cout << "Error: Paciente con ID " << idPaciente << " no encontrado o inactivo." << endl;
+        return;
+    }
+    
+    int cantidad = 0;
+    // 2. Cargar el historial completo a la RAM (Array temporal)
+    HistorialMedico* historialCompleto = obtenerHistorialCompleto_BIN(idPaciente, &cantidad);
+
+    if (cantidad == 0 || historialCompleto == nullptr) {
+        cout << "El paciente " << paciente.nombre << " no tiene historial médico registrado." << endl;
         return;
     }
 
-    cout << "\nHISTORIAL MEDICO DEL PACIENTE\n";
-    cout << "+---------------------------------------------------------------------------------------------+\n";
-    cout << "| ID |     Fecha     |  Hora  |     Diagnostico     | ID Doctor |  Costo  |\n";
-    cout << "+---------------------------------------------------------------------------------------------+\n";
+    // 3. Imprimir el encabezado
+    cout << "\n--- HISTORIAL MEDICO DEL PACIENTE: " << paciente.nombre << " " << paciente.apellido << " ---" << endl;
+    cout << "+---------------------------------------------------------------------------------------------+" << endl;
+    cout << "| ID |    Fecha      |  Hora  |        Diagnostico      | ID Doctor |   Costo   |" << endl;
+    cout << "+---------------------------------------------------------------------------------------------+" << endl;
 
-    for (int i = 0; i < paciente->capacidadHistorial; i++) {
-        HistorialMedico& h = paciente->historial[i];
-        cout << "| " << h.idConsulta
-             << "  | " << h.fecha
-             << " | " << h.hora
-             << " | " << h.diagnostico
-             << " |     " << h.idDoctor
-             << "     | $" << h.costo << " |\n";
+    // 4. Iterar sobre el array temporal cargado desde el archivo
+    for (int i = 0; i < cantidad; i++) {
+        HistorialMedico& h = historialCompleto[i];
+        
+        // Usamos setw() para asegurar el formato de tabla
+        cout << "| " << setw(2) << h.idConsulta
+             << " | " << setw(11) << h.fecha
+             << " | " << setw(6) << h.hora
+             << " | " << setw(23) << h.diagnostico
+             << " | " << setw(9) << h.idDoctor
+             << " | $" << fixed << setprecision(2) << setw(7) << h.costo << " |" << endl;
     }
 
-    cout << "+---------------------------------------------------------------------------------------------+\n";
+    cout << "+---------------------------------------------------------------------------------------------+" << endl;
+    
+    // 5. ¡CRUCIAL! Liberar la memoria del array temporal
+    delete[] historialCompleto; 
 }
 
 
@@ -522,37 +600,52 @@ int strcasecmp_compat(const char* a, const char* b) {
     return (unsigned char)*a - (unsigned char)*b;
 }
 
-Doctor* crearDoctor(Hospital* hospital, const char* nombre, const char* apellido, const char* cedula,
-                    const char* especialidad, int aniosExperiencia, float costoConsulta) {
-    if (buscarDoctorPorCedula(hospital, cedula) != nullptr) return nullptr;
-
-    if (hospital->cantidadDoctores >= hospital->capacidadDoctores) {
-        redimensionarArrayDoctores(hospital);
+bool crearDoctor_BIN(const char* nombre, const char* apellido, const char* cedula,
+                     const char* especialidad, int aniosExperiencia, float costoConsulta) 
+{
+    // 1. Verificación de unicidad por cédula (Búsqueda secuencial en el archivo)
+    Doctor existente = buscarDoctorPorCedula_BIN(cedula);
+    if (existente.id != 0) {
+        cout << "Error: Ya existe un doctor registrado con la cédula " << cedula << endl;
+        return false;
     }
 
-    Doctor& nuevo = hospital->doctores[hospital->cantidadDoctores];
-    nuevo.id = hospital->siguienteIdDoctor++;
+    // 2. Crear y llenar el objeto Doctor temporal en la RAM
+    Doctor nuevo;
+    
+    // Asignar el ID usando el contador global
+    nuevo.id = hospital.nextDoctorID; 
+    
+    // Copiar los datos (Usando strncpy es más seguro que strcpy)
     strncpy(nuevo.nombre, nombre, 50);
     strncpy(nuevo.apellido, apellido, 50);
     strncpy(nuevo.cedula, cedula, 20);
     strncpy(nuevo.especialidad, especialidad, 50);
     nuevo.aniosExperiencia = aniosExperiencia;
     nuevo.costoConsulta = costoConsulta;
-    strcpy(nuevo.horarioAtencion, "");
-    strcpy(nuevo.telefono, "");
-    strcpy(nuevo.email, "");
-    nuevo.disponible = true;
+    
+    // Inicializar campos fijos (reemplaza a la asignación dinámica original)
+    // Estos campos deberían ser ahora IDs de relación o arrays fijos.
+    nuevo.activo = true; 
+    
+    // 3. Escribir el nuevo registro al final del archivo doctores.bin
+    std::fstream file("doctores.bin", std::ios::out | std::ios::binary | std::ios::app); 
+    
+    if (file.is_open()) {
+        file.write(reinterpret_cast<const char*>(&nuevo), sizeof(Doctor));
+        file.close();
 
-    nuevo.capacidadPacientes = 5;
-    nuevo.cantidadPacientes = 0;
-    nuevo.pacientesAsignados = new int[nuevo.capacidadPacientes];
-
-    nuevo.capacidadCitas = 10;
-    nuevo.cantidadCitas = 0;
-    nuevo.citasAgendadas = new int[nuevo.capacidadCitas];
-
-    hospital->cantidadDoctores++;
-    return &nuevo;
+        // 4. Actualizar los metadatos globales en RAM y en Disco
+        hospital.nextDoctorID++;
+        hospital.cantidadDoctoresActivos++; // Asumiendo que existe este contador
+        guardarMetadatos();
+        
+        cout << "Doctor " << nuevo.id << " (" << nuevo.nombre << ") registrado con éxito en disco." << endl;
+        return true;
+    } else {
+        cerr << "ERROR: No se pudo abrir/crear doctores.bin para escritura." << endl;
+        return false;
+    }
 }
 
 
