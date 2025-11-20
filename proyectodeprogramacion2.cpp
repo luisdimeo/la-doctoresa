@@ -15,10 +15,12 @@ using namespace std;
 struct HistorialMedico {
     int id;
     char fecha[11];
+    char hora[6];
     char diagnostico[500];
     char tratamiento[500];
     char observaciones[500];
     int idPaciente;
+    double costo;
 
     int siguienteConsultaID;
     bool eliminado;
@@ -37,6 +39,7 @@ struct Paciente {
     char direccion[100];
     char email[50];
     bool activo;
+    int citasIDs[20];
 
     
     int cantidadConsultas;
@@ -55,10 +58,11 @@ struct Paciente {
     time_t fechaModificacion;
 };
 
-// Estructura Doctor
+// Estructura Doctor 
 struct Doctor {
     int id;
     char nombre[50];
+    int edad;
     char apellido[50];
     char cedula[20];
     char especialidad[50];
@@ -70,6 +74,7 @@ struct Doctor {
     int pacientesIDs [50];
     int citas [30];
     bool activo;
+    int citasIDs[20];
 
     
 
@@ -92,12 +97,17 @@ struct Cita {
     char fecha[11];
     char hora[6];
     char motivo[150];
+    char estado[10];
+    
 
     char observaciones[200];
     int ConsultaID;
     bool confirmada;
     bool atendida;
     int consultasID;
+
+    time_t fechaCreacion;
+    time_t fechaModificacion;
 
     bool eliminado;
 };
@@ -301,7 +311,7 @@ Paciente obtenerPacientePorCedula(const char* cedula) {
     return pEncontrado; // Retornar estructura vacía si no se encuentra
 }
 
-Paciente leerPacientePorIndice(int indice) {
+Paciente obtenerPacientePorID(int indice) {
     Paciente p;
     
     if (indice < 0) return p; // Manejo de error si el índice es inválido
@@ -507,6 +517,34 @@ void buscarPacientesPorNombreParcial(const char* nombreParcial) {
 //historial medico del pasciente 
 int agregarHistorialMedico(Hospital* h, HistorialMedico nuevaConsulta);
 
+
+
+Cita leerConsultaPorID(int idBuscado) {
+    Cita c;
+    ifstream archivo("consultas.bin", ios::binary);
+    if (!archivo.is_open()) return c;
+
+    ArchivoHeader header;
+    archivo.read((char*)&header, sizeof(ArchivoHeader));
+
+    // Iteramos por todos los registros escritos en el archivo
+    for (int i = 0; i < header.cantidadRegistros; i++) {
+        archivo.read((char*)&c, sizeof(Cita));
+        
+        // Si el ID coincide y no está eliminada, la retornamos
+        if (c.id == idBuscado && !c.eliminado) {
+            archivo.close();
+            return c;
+        }
+    }
+    
+    // Si no se encuentra, retornamos una estructura vacía (ID 0)
+    c.id = 0; 
+    archivo.close();
+    return c;
+}
+HistorialMedico obtenerHistorialMedicoPorID(int idBuscado);
+
 bool enlazarYAgregarConsulta(Hospital* h, int pacienteID, HistorialMedico nuevaConsulta) {
     // 1. Obtener el Paciente y verificar existencia (acceso aleatorio)
     Paciente pacienteActual = obtenerPacientePorID(pacienteID);
@@ -546,7 +584,7 @@ bool enlazarYAgregarConsulta(Hospital* h, int pacienteID, HistorialMedico nuevaC
         consultaActual.siguienteConsultaID = nuevaConsultaID; // Lo enlazamos al nuevo registro
         
         
-        actualizarHistorialMedico(consultaActual); 
+        bool agregarHistorialMedico(HistorialMedico consultaActual); 
     }
     pacienteActual.cantidadConsultas++;
     actualizarPaciente(pacienteActual); // Sobrescribe el paciente con el nuevo enlace/contador.
@@ -666,6 +704,9 @@ HistorialMedico obtenerUltimaConsultaDeDisco(Paciente paciente) {
 
     return hVacia; // Devolver estructura vacía si el recorrido falla
 }
+bool cargarDatosHospital(Hospital* h);
+bool guardarDatosHospital(Hospital* h);
+
 bool agregarDoctor(Hospital* h) {
     const char* nombreArchivo = "doctores.bin";
     Doctor nuevoDoctor;
@@ -701,7 +742,7 @@ bool agregarDoctor(Hospital* h) {
 
     // Inicializar los arrays de IDs fijos a 0 o -1 (por si acaso)
     memset(nuevoDoctor.pacientesIDs, 0, sizeof(nuevoDoctor.pacientesIDs));
-    memset(nuevoDoctor.citasIDs, 0, sizeof(nuevoDoctor.citasIDs));
+    memset(nuevoDoctor.citas, 0, sizeof(nuevoDoctor.citas));
     
     // 3. Abrir el archivo en modo APPEND (CREATE)
     std::fstream archivo(nombreArchivo, std::ios::binary | std::ios::app);
@@ -778,6 +819,8 @@ Doctor obtenerDoctorPorIndice(int indice) {
     archivo.close();
     return d;
 }
+bool actualizarDoctor(Doctor doctorModificado);
+
 Doctor obtenerDoctorPorID(int id) {
     // 1. Encontrar la ubicación del registro
     int indice = buscarIndiceDoctorDeID(id);
@@ -1041,7 +1084,7 @@ bool verificarConflictoCita(int idDoctor, const char* fecha, const char* hora) {
         archivo.read((char*)&temp, sizeof(Cita));
         
         // El conflicto solo aplica a citas activas, pendientes y del mismo doctor/fecha/hora
-        if (!temp.eliminado && temp.doctorId == idDoctor && 
+        if (!temp.eliminado && temp.idDoctor == idDoctor && 
             strcmp(temp.fecha, fecha) == 0 && strcmp(temp.hora, hora) == 0 &&
             !temp.atendida) {
             archivo.close();
@@ -1073,7 +1116,7 @@ bool agregarCita(Hospital* h, int idPaciente, int idDoctor, const char* fecha, c
     strcpy(nuevaCita.estado, "pendiente");
     nuevaCita.atendida = false;
     nuevaCita.eliminado = false; 
-    nuevaCita.consultaID = -1; // Sin historial asociado inicialmente
+    nuevaCita.id = -1; // Sin historial asociado inicialmente
 
     // 3. Guardar la Cita en citas.bin (CREATE)
     std::fstream archivo(nombreArchivo, std::ios::binary | std::ios::app);
@@ -1091,11 +1134,12 @@ bool agregarCita(Hospital* h, int idPaciente, int idDoctor, const char* fecha, c
     
     // (Lógica de añadir el ID de la cita al array fijo p.citasIDs y d.citasIDs)
     if (p.id != 0 && p.cantidadCitas < 20) {
-        p.citasIDs[p.cantidadCitas++] = nuevaCita.id;
+       p.citasIDs[p.cantidadCitas] = nuevaCita.id;
+       p.cantidadCitas++;
         actualizarPaciente(p); 
     }
     if (d.id != 0 && d.cantidadCitas < 30) {
-        d.citasIDs[d.cantidadCitas++] = nuevaCita.id;
+        d.citasIDs [d.cantidadCitas++] = nuevaCita.id;
         actualizarDoctor(d); 
     }
 
@@ -1112,6 +1156,11 @@ bool agregarCita(Hospital* h, int idPaciente, int idDoctor, const char* fecha, c
     std::cout << "Cita agendada con ID: " << nuevaCita.id << "\n";
     return true;
 }
+Cita obtenerCitaPorIndice(int indiceBuscado);
+
+int buscarIndiceCitaDeID(int idBuscado);
+
+bool actualizarCita(Cita citaModificada);
 bool cancelarCita_Disco(int idCita) {
     // 1. Buscar la cita y obtener su índice en disco
     int indice = buscarIndiceCitaDeID(idCita); 
@@ -1144,10 +1193,7 @@ bool cancelarCita_Disco(int idCita) {
     return false;
 }
 
-#include <iostream>
-#include <fstream>
-#include <iomanip> // Necesario para setw y left
-#include <cstring>
+
 
 // Asumimos que las estructuras Cita y ArchivoHeader están definidas.
 
@@ -1178,11 +1224,11 @@ void listarCitasPorPaciente(int idPaciente) {
         archivo.read((char*)&temp, sizeof(Cita));
         
         // Comprobar borrado lógico y el ID del paciente
-        if (!temp.eliminado && temp.pacienteId == idPaciente) {
+        if (!temp.eliminado && temp.idPaciente == idPaciente) {
             std::cout << "| " << std::setw(5) << temp.id 
                       << " | " << std::setw(8) << temp.fecha 
                       << " | " << std::setw(6) << temp.hora 
-                      << " | " << std::setw(7) << temp.doctorId 
+                      << " | " << std::setw(7) << temp.idDoctor  
                       << " | " << std::setw(19) << std::left << temp.estado << " |\n";
             encontrado = true;
         }
