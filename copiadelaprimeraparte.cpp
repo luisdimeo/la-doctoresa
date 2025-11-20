@@ -2,7 +2,6 @@
 #include <cstring>
 #include <ctime>
 #include <iomanip>
-#include <fstream>
 
 using namespace std;   
 
@@ -13,15 +12,14 @@ int strcasecmp_compat(const char* a, const char* b);
 
 // Estructura HistorialMedico
 struct HistorialMedico {
-    int id;
+    int idConsulta;
     char fecha[11];
-    char diagnostico[500];
-    char tratamiento[500];
-    char observaciones[500];
-    int idPaciente;
-
-    int siguienteConsultaID;
-    bool eliminado;
+    char hora[6];
+    char diagnostico[200];
+    char tratamiento[200];
+    char medicamentos[150];
+    int idDoctor;
+    float costo;
 };
 
 // Estructura Paciente
@@ -36,23 +34,19 @@ struct Paciente {
     char telefono[15];
     char direccion[100];
     char email[50];
-    bool activo;
 
-    
+    HistorialMedico* historial;
     int cantidadConsultas;
-    int primerConsultaID;
-    
+    int capacidadHistorial;
 
-    
+    int* citasAgendadas;
     int cantidadCitas;
-    int catitasIDs[20];
+    int capacidadCitas;
 
     char alergias[500];
     char observaciones[500];
 
-    bool eliminado;
-    time_t fechaCreacion;
-    time_t fechaModificacion;
+    bool activo;
 };
 
 // Estructura Doctor
@@ -67,21 +61,16 @@ struct Doctor {
     char horarioAtencion[50];
     char telefono[15];
     char email[50];
-    int pacientesIDs [50];
-    int citas [30];
-    bool activo;
 
-    
-
+    int* pacientesAsignados;
+    int cantidadPacientes;
     int capacidadPacientes;
 
-    
+    int* citasAgendadas;
     int cantidadCitas;
-   
+    int capacidadCitas;
 
-    bool eliminado;
-    time_t fechaCreacion;
-    time_t fechaModificacion;
+    bool disponible;
 };
 
 // Estructura Cita
@@ -92,14 +81,9 @@ struct Cita {
     char fecha[11];
     char hora[6];
     char motivo[150];
-
+    char estado[20];
     char observaciones[200];
-    int ConsultaID;
-    bool confirmada;
     bool atendida;
-    int consultasID;
-
-    bool eliminado;
 };
 
 struct Hospital {
@@ -107,279 +91,81 @@ struct Hospital {
     char direccion[150];
     char telefono[15];
 
-    
+    Paciente* pacientes;
     int cantidadPacientes;
-    
+    int capacidadPacientes;
 
-    
+    Doctor* doctores;
     int cantidadDoctores;
-    
+    int capacidadDoctores;
 
-    
+    Cita* citas;
     int cantidadCitas;
-
+    int capacidadCitas;
 
     int siguienteIdPaciente;
     int siguienteIdDoctor;
     int siguienteIdCita;
     int siguienteIdConsulta;
 
-    int totalPacientesRegistrados;
-    int totalDoctoresRegistrados;
-    int totalCitasAgendadas;
-    int siguienteIDConsulta;
-
-    
+    //gestion del paciente
 };
-struct ArchivoHeader {
-    int cantidadRegistros;      
-    int proximoID;              
-    int registrosActivos;       
-    int version;                
-};
-ArchivoHeader leerHeader(const char* nombreArchivo) {
-    ArchivoHeader header;
-    // Inicializar el header con un valor inválido por defecto (ej. -1)
-    header.proximoID = -1; 
-    
-    // Abrir en modo de lectura binaria
-    std::ifstream archivo(nombreArchivo, std::ios::binary);
-    
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo abrir el archivo para lectura del Header: " << nombreArchivo << std::endl;
-        return header;
-    }
-    
-    // Leer exactamente el tamaño del Header desde el inicio (posición 0)
-    archivo.read((char*)&header, sizeof(ArchivoHeader));
-    
-    archivo.close();
-    return header;
-}
-bool actualizarHeader(const char* nombreArchivo, ArchivoHeader header) {
-    
-    std::fstream archivo(nombreArchivo, std::ios::binary | std::ios::in | std::ios::out);
-    
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo abrir el archivo para actualizar el Header: " << nombreArchivo << std::endl;
-        return false;
-    }
-    
-    // Posicionarse al inicio del archivo (byte 0) para la escritura
-    archivo.seekp(0, std::ios::beg);
-    
-    // Escribir exactamente el tamaño del Header
-    archivo.write((char*)&header, sizeof(ArchivoHeader));
-    
-    archivo.close();
-    return true;
-}
-long calcularPosicion(int indice, size_t tamanoRegistro) {
-    long posicion = sizeof(ArchivoHeader) + (indice * tamanoRegistro);
-    return posicion;
+Hospital* inicializarHospital(const char* nombre, int capacidadInicial) {
+    Hospital* hospital = new Hospital;
+    strncpy(hospital->nombre, nombre, 100);
+    strcpy(hospital->direccion, "");
+    strcpy(hospital->telefono, "");
+
+    hospital->capacidadPacientes = capacidadInicial;
+    hospital->cantidadPacientes = 0;
+    hospital->pacientes = new Paciente[capacidadInicial];
+
+    hospital->capacidadDoctores = capacidadInicial;
+    hospital->cantidadDoctores = 0;
+    hospital->doctores = new Doctor[capacidadInicial];
+
+    hospital->capacidadCitas = capacidadInicial * 2;
+    hospital->cantidadCitas = 0;
+    hospital->citas = new Cita[hospital->capacidadCitas];
+
+    hospital->siguienteIdPaciente = 1;
+    hospital->siguienteIdDoctor = 1;
+    hospital->siguienteIdCita = 1;
+    hospital->siguienteIdConsulta = 1;
+
+    return hospital;
 }
 
-bool inicializarArchivo(const char* nombreArchivo) {
-    
-    std::fstream archivo(nombreArchivo, std::ios::binary | std::ios::out);
-    
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo crear o abrir el archivo para inicializar: " 
-                  << nombreArchivo << std::endl;
-        return false;
-    }
-    
-    // 2. Definir la estructura inicial del Header.
-    ArchivoHeader headerInicial = {
-        0,   // cantidadRegistros: 0
-        1,   // proximoID: 1 (Los IDs deben comenzar en 1)
-        0,   // registrosActivos: 0
-        1    // version: 1
-    };
-    
-    // 3. Escribir el Header al inicio del archivo.
-    archivo.write((char*)&headerInicial, sizeof(ArchivoHeader));
-    
-    archivo.close();
-    return true;
-}
-bool agregarPaciente(Hospital* h, Paciente nuevoPaciente) {
-    const char* nombreArchivo = "pacientes.bin";
-    
-    // 1. Asignar el ID y la metadata usando los contadores globales del Hospital
-    nuevoPaciente.id = h->siguienteIdPaciente;
-    nuevoPaciente.eliminado = false; // El registro está activo
-    nuevoPaciente.fechaCreacion = time(NULL);
-    nuevoPaciente.fechaModificacion = time(NULL);
-    // Asegúrate de inicializar los arrays fijos (citasIDs) a 0 o -1 aquí si es necesario.
-
-    // 2. Abrir el archivo en modo APPEND (ios::app) para escribir al final.
-    // Ojo: Si usas ios::app, el puntero se posiciona al final, IGNORANDO el Header.
-    std::fstream archivo(nombreArchivo, std::ios::binary | std::ios::app);
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo abrir el archivo para agregar paciente." << std::endl;
-        return false;
-    }
-    
-    // 3. Escribir el nuevo registro de Paciente al final del archivo.
-    archivo.write((char*)&nuevoPaciente, sizeof(Paciente));
-    archivo.close();
-    
-    // 4. Actualizar el Header del archivo (pacientes.bin).
-    ArchivoHeader header = leerHeader(nombreArchivo);
-    header.cantidadRegistros++;
-    header.registrosActivos++;
-    actualizarHeader(nombreArchivo, header);
-    
-    // 5. Actualizar los contadores globales del Hospital (en RAM y en disco).
-    h->siguienteIdPaciente++;
-    h->totalPacientesRegistrados++; // Mantenemos el total
-    
-    
-    std::cout << "Paciente ID " << nuevoPaciente.id << " registrado exitosamente." << std::endl;
-    return true;
-}
-
-int buscarIndiceDeID(int id) {
-    const char* nombreArchivo = "pacientes.bin";
-    std::ifstream archivo(nombreArchivo, std::ios::binary);
-    
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo abrir el archivo de pacientes para busqueda." << std::endl;
-        return -1;
-    }
-
-    ArchivoHeader header;
-    archivo.read((char*)&header, sizeof(ArchivoHeader)); 
-    
-    Paciente temp; // Una variable temporal para leer un registro a la vez
-    
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        // Leer un solo registro en la variable temporal
-        archivo.read((char*)&temp, sizeof(Paciente));
-        
-        if (temp.id == id && !temp.eliminado) {
-            archivo.close();
-            return i; // ¡Encontrado! Retornamos la posición (índice).
+Paciente* buscarPacientePorId(Hospital* hospital, int id) {
+    for (int i = 0; i < hospital->cantidadPacientes; i++) {
+        if (hospital->pacientes[i].id == id) {
+            return &hospital->pacientes[i];
         }
     }
-    
-    archivo.close();
-    return -1; // ID no encontrado.
-}
-Paciente obtenerPacientePorCedula(const char* cedula) {
-    const char* nombreArchivo = "pacientes.bin";
-    Paciente pEncontrado = {0}; // Estructura vacía para retornar si no se encuentra
-    
-    std::ifstream archivo(nombreArchivo, std::ios::binary);
-    
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo abrir el archivo de pacientes para busqueda por cedula." << std::endl;
-        return pEncontrado;
-    }
-    
-    // 1. Leer el Header para obtener la cantidad total de registros.
-    ArchivoHeader header;
-    archivo.read((char*)&header, sizeof(ArchivoHeader)); 
+    return nullptr;
 
-    Paciente temp; // Variable temporal para la lectura secuencial
-    
-    // 2. Iterar sobre todos los registros.
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        archivo.read((char*)&temp, sizeof(Paciente));
-        
-        // 3. Comparar la cédula y verificar si el registro está activo.
-        // Usar strncmp si sabes el tamaño fijo, o la funcion que uses (strcasecmp_compat).
-        if (!temp.eliminado && strcmp(temp.cedula, cedula) == 0) { 
-            // Si la cédula coincide y el paciente está activo
-            archivo.close();
-            return temp; // Devolver la estructura Paciente encontrada
+
+}
+void redimensionarArrayPacientes(Hospital* hospital) {
+    int nuevaCapacidad = hospital->capacidadPacientes * 2;
+    Paciente* nuevoArray = new Paciente[nuevaCapacidad];
+
+    for (int i = 0; i < hospital->cantidadPacientes; i++) {
+        nuevoArray[i] = hospital->pacientes[i];
+    }
+
+    delete[] hospital->pacientes;
+    hospital->pacientes = nuevoArray;
+    hospital->capacidadPacientes = nuevaCapacidad;
+}
+
+Paciente* buscarPacientePorCedula(Hospital* hospital, const char* cedula) {
+    for (int i = 0; i < hospital->cantidadPacientes; i++) {
+        if (strcasecmp_compat(hospital->pacientes[i].cedula, cedula) == 0) {
+            return &hospital->pacientes[i];
         }
     }
-    
-    archivo.close();
-    return pEncontrado; // Retornar estructura vacía si no se encuentra
-}
-
-Paciente leerPacientePorIndice(int indice) {
-    Paciente p;
-    
-    if (indice < 0) return p; // Manejo de error si el índice es inválido
-
-    std::ifstream archivo("pacientes.bin", std::ios::binary);
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo abrir pacientes.bin para lectura aleatoria." << std::endl;
-        return p;
-    }
-
-    // Usar la función de bajo nivel que ya implementaste
-    long posicion = calcularPosicion(indice, sizeof(Paciente));
-    
-    // Posicionarse directamente en el inicio del registro
-    archivo.seekg(posicion, std::ios::beg);
-    
-    // Leer el registro completo de Paciente
-    archivo.read((char*)&p, sizeof(Paciente));
-    
-    archivo.close();
-    return p;
-}
-
-bool actualizarPaciente(Paciente pModificado) {
-    const char* nombreArchivo = "pacientes.bin";
-    
-    // 1. Encontrar el índice (posición) actual del registro en el archivo.
-    // Necesitamos este índice para calcular la posición en bytes.
-    int indice = buscarIndiceDeID(pModificado.id);
-    if (indice == -1) {
-        std::cerr << "Error: Paciente con ID " << pModificado.id << " no encontrado para actualizar." << std::endl;
-        return false;
-    }
-
-    // 2. Calcular la posición exacta en bytes.
-    long posicion = calcularPosicion(indice, sizeof(Paciente));
-    
-    // 3. Abrir el archivo en modo de lectura y escritura binaria.
-    std::fstream archivo(nombreArchivo, std::ios::binary | std::ios::in | std::ios::out);
-    if (!archivo.is_open()) {
-        std::cerr << "Error: No se pudo abrir el archivo para actualizar paciente." << std::endl;
-        return false;
-    }
-    
-    // 4. Actualizar la metadata de modificación.
-    pModificado.fechaModificacion = time(NULL);
-
-    // 5. Posicionar el puntero de escritura directamente en el inicio del registro.
-    archivo.seekp(posicion, std::ios::beg);
-    
-    // 6. Escribir/Sobrescribir el registro completo.
-    archivo.write((char*)&pModificado, sizeof(Paciente));
-    
-    archivo.close();
-    std::cout << "Paciente ID " << pModificado.id << " actualizado exitosamente." << std::endl;
-    return true;
-}
-bool eliminarPaciente(Hospital* h, int id) {
-    const char* nombreArchivo = "pacientes.bin";
-    
-    // 1. Obtener la copia del registro actual.
-    Paciente p = obtenerPacientePorID(id);
-    
-    // El ID 0 se utiliza para indicar un registro vacío/no encontrado.
-    if (p.id == 0 || p.eliminado) {
-        std::cerr << "Error: Paciente ID " << id << " no encontrado o ya estaba eliminado." << std::endl;
-        return false;
-    }
-
-    // 2. Aplicar el borrado LÓGICO (la bandera).
-    p.eliminado = true;
-    p.fechaModificacion = time(NULL);
-
-    // 3. Sobrescribir el registro en el archivo (Usando la función actualizarPaciente).
-    if (!actualizarPaciente(p)) {
-        std::cerr << "Error: No se pudo sobrescribir el registro marcado como eliminado." << std::endl;
-        return false;
-    }
+    return nullptr;
 }
 
 char toLower(char c) {
@@ -743,7 +529,18 @@ Doctor* buscarDoctorPorCedula(Hospital* hospital, const char* cedula) {
     return nullptr;
 }
     
+void redimensionarArrayDoctores(Hospital* hospital) {
+    int nuevaCapacidad = hospital->capacidadDoctores * 2;
+    Doctor* nuevoArray = new Doctor[nuevaCapacidad];
 
+    for (int i = 0; i < hospital->cantidadDoctores; i++) {
+        nuevoArray[i] = hospital->doctores[i];
+    }
+
+    delete[] hospital->doctores;
+    hospital->doctores = nuevoArray;
+    hospital->capacidadDoctores = nuevaCapacidad;
+}
 Doctor** buscarDoctoresPorEspecialidad(Hospital* hospital, const char* especialidad, int* cantidad) {
     *cantidad = 0;
     for (int i = 0; i < hospital->cantidadDoctores; i++) {
@@ -947,9 +744,44 @@ bool validarHora(const char* hora) {
     return (hora[2] == ':');
 }
 
+void redimensionarArrayCitas(Hospital* hospital) {
+    int nuevaCapacidad = hospital->capacidadCitas * 2;
+    Cita* nuevoArray = new Cita[nuevaCapacidad];
 
+    for (int i = 0; i < hospital->cantidadCitas; i++) {
+        nuevoArray[i] = hospital->citas[i];
+    }
 
+    delete[] hospital->citas;
+    hospital->citas = nuevoArray;
+    hospital->capacidadCitas = nuevaCapacidad;
+}
 
+void redimensionarCitasPaciente(Paciente* paciente) {
+    int nuevaCapacidad = paciente->capacidadCitas * 2;
+    int* nuevoArray = new int[nuevaCapacidad];
+
+    for (int i = 0; i < paciente->cantidadCitas; i++) {
+        nuevoArray[i] = paciente->citasAgendadas[i];
+    }
+
+    delete[] paciente->citasAgendadas;
+    paciente->citasAgendadas = nuevoArray;
+    paciente->capacidadCitas = nuevaCapacidad;
+}
+
+void redimensionarCitasDoctor(Doctor* doctor) {
+    int nuevaCapacidad = doctor->capacidadCitas * 2;
+    int* nuevoArray = new int[nuevaCapacidad];
+
+    for (int i = 0; i < doctor->cantidadCitas; i++) {
+        nuevoArray[i] = doctor->citasAgendadas[i];
+    }
+
+    delete[] doctor->citasAgendadas;
+    doctor->citasAgendadas = nuevoArray;
+    doctor->capacidadCitas = nuevaCapacidad;
+}
 void redimensionarCitas(Hospital* hospital, int nuevaCapacidad) {
     Cita* nuevoArreglo = new Cita[nuevaCapacidad];
 
@@ -1271,4 +1103,3 @@ destruirHospital(&hospital);
 
 return 0;
 }
-
