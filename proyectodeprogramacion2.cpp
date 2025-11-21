@@ -1177,14 +1177,14 @@ bool agregarCita(Hospital* h, int idPaciente, int idDoctor, const char* fecha, c
         return false;
     }
 
-    // 2. Crear y llenar la estructura Cita
+    
     Cita nuevaCita;
     nuevaCita.id = h->siguienteIdCita;
     nuevaCita.id = idPaciente;
     nuevaCita.id = idDoctor;
     strncpy(nuevaCita.fecha, fecha, sizeof(nuevaCita.fecha));
     strncpy(nuevaCita.hora, hora, sizeof(nuevaCita.hora));
-    strcpy(nuevaCita.motivo, "Cita agendada por usuario"); // Puedes cambiar esto
+    strcpy(nuevaCita.motivo, "Cita agendada por usuario"); 
     strcpy(nuevaCita.estado, "pendiente");
     nuevaCita.atendida = false;
     nuevaCita.eliminado = false; 
@@ -1199,8 +1199,7 @@ bool agregarCita(Hospital* h, int idPaciente, int idDoctor, const char* fecha, c
     archivo.write((char*)&nuevaCita, sizeof(Cita));
     archivo.close();
 
-    // 4. Actualizar las Relaciones (Enlazar la Cita al Paciente y Doctor)
-    // Asumimos que esta lógica ya está implementada y que obtener/actualizar... funciona.
+    
     Paciente p = obtenerPacientePorID(idPaciente); 
     Doctor d = obtenerDoctorPorID(idDoctor); 
     
@@ -1259,8 +1258,7 @@ bool cancelarCita_Disco(int idCita) {
     // 4. Sobrescribir el registro actualizado en citas.bin
     if (actualizarCita(cita)) {
         cout << "Cita ID " << idCita << " cancelada exitosamente.\n";
-        // Nota: Si usas la bandera 'eliminado' para cancelada, 
-        // debes también actualizar el header.registrosActivos
+        
         return true;
     }
 
@@ -1363,7 +1361,7 @@ void listarCitasPorDoctor(int idDoctor) {
     }
     archivo.close();
 }
-//Validaciones y Utilidades
+
 
 bool validarCedula(const char* cedula) {
     if (cedula == nullptr || strlen(cedula) == 0) return false;
@@ -1433,30 +1431,30 @@ int main() {
         cout << "| 3. Agendar cita                      |\n";
         cout << "| 4. Atender cita                      |\n";
         cout << "| 5. Mostrar historial de paciente     |\n";
-        cout << "| 6. Cancelar Cita                     |\n"; // REUBICADO
-        cout << "| 7. Listar doctores                   |\n"; // REUBICADO
-        cout << "| 8. Listar pacientes                  |\n"; // REUBICADO
-        cout << "| 9. Buscar paciente por Cedula        |\n"; // REUBICADO
-        cout << "| 10. Buscar doctor por Especialidad   |\n"; // REUBICADO
-        cout << "| 11. Buscar pacientes por Nombre      |\n"; // REUBICADO
-        cout << "| 12. Eliminar paciente (Lógico)       |\n"; // REUBICADO
-        cout << "| 13. Eliminar doctor (Lógico)         |\n"; // REUBICADO
+        cout << "| 6. Cancelar Cita                     |\n"; 
+        cout << "| 7. Listar doctores                   |\n"; 
+        cout << "| 8. Listar pacientes                  |\n"; 
+        cout << "| 9. Buscar paciente por Cedula        |\n"; 
+        cout << "| 10. Buscar doctor por Especialidad   |\n"; 
+        cout << "| 11. Buscar pacientes por Nombre      |\n"; 
+        cout << "| 12. Eliminar paciente (Lógico)       |\n"; 
+        cout << "| 13. Eliminar doctor (Lógico)         |\n"; 
         cout << "| 0. Salir y Guardar                   |\n";
         cout << "+--------------------------------------+\n";
         opcion = obtenerEntero("Seleccione una opcion: ");
 
-        // NO SE NECESITA cin.ignore() aquí porque obtenerEntero ya lo hace.
+        
 
         switch (opcion) {
-            case 1: { // Registrar paciente (Ahora usa la versión de disco)
-                agregarPaciente(&hospital); // La función pide los datos internamente
+            case 1: { 
+                agregarPaciente(&hospital); 
                 break;
             }
-            case 2: { // Registrar doctor (Ahora usa la versión de disco)
-                agregarDoctor(&hospital); // La función pide los datos internamente
+            case 2: { 
+                agregarDoctor(&hospital); 
                 break;
             }
-            case 3: { // Agendar cita (Ahora usa la versión de disco)
+            case 3: { 
                 int idPaciente = obtenerEntero("ID del paciente: ");
                 int idDoctor = obtenerEntero("ID del doctor: ");
                 char fecha[11], hora[6];
@@ -1465,7 +1463,7 @@ int main() {
                 agregarCita(&hospital, idPaciente, idDoctor, fecha, hora);
                 break;
             }
-            case 4: { // Atender cita (Requiere ID de cita o fecha/doctor)
+            case 4: { 
                 int idCita = obtenerEntero("ID de la cita a atender: ");
                 char diagnostico[100];
                 float costo;
@@ -1479,27 +1477,27 @@ int main() {
                 atenderCita(&hospital, idCita, diagnostico, costo);
                 break;
             }
-            case 5: { // Mostrar historial
+            case 5: { 
                 int idPaciente = obtenerEntero("Ingrese el ID del paciente para ver historial: ");
-                mostrarHistorial(idPaciente); // Función de disco
+                mostrarHistorial(idPaciente);
                 break;
             }
-            case 6: { // Cancelar Cita (Opción 6 original era listar doctores)
+            case 6: { 
                 int idCancelar = obtenerEntero("Ingrese el ID de la cita que desea cancelar: ");
-                cancelarCita_Disco(idCancelar); // Función de disco
+                cancelarCita_Disco(idCancelar); 
                 break;
             }
-            case 7: // Listar doctores (Opción 7 original era listar pacientes)
-                listarTodosDoctores(); // Función de disco
+            case 7: 
+                listarTodosDoctores(); 
                 break;
-            case 8: // Listar pacientes (Opción 8 original era buscar paciente)
-                listarTodosPacientes(); // Función de disco
+            case 8: 
+                listarTodosPacientes(); 
                 break;
-            case 9: { // Buscar paciente por cédula
+            case 9: { 
                 char cedula[21];
                 cout << "Ingrese la cedula del paciente: ";
                 cin.getline(cedula, 21);
-                Paciente p = obtenerPacientePorCedula(cedula); // Función de disco
+                Paciente p = obtenerPacientePorCedula(cedula); 
                 if (!p.eliminado && p.id != 0) {
                     cout << "Paciente encontrado: " << p.nombre << " " << p.apellido << ", Edad: " << p.edad << "\n";
                 } else {
@@ -1507,28 +1505,28 @@ int main() {
                 }
                 break;
             }
-            case 10: { // Buscar doctor por especialidad
+            case 10: { 
                 char especialidad[51];
                 cout << "Ingrese la especialidad a buscar: ";
                 cin.getline(especialidad, 51);
-                buscarDoctoresPorEspecialidad(especialidad); // Función de disco
+                buscarDoctoresPorEspecialidad(especialidad); 
                 break;
             }
-            case 11: { // Buscar pacientes parciales
+            case 11: { 
                 char nombreParcial[51];
                 cout << "Ingrese parte del nombre del paciente: ";
                 cin.getline(nombreParcial, 51);
-                buscarPacientesPorNombreParcial(nombreParcial); // Función de disco
+                buscarPacientesPorNombreParcial(nombreParcial); 
                 break;
             }
-            case 12: { // Eliminar paciente (Lógico)
+            case 12: { 
                 int idPaciente = obtenerEntero("ID del paciente a ELIMINAR logicamente: ");
-                eliminarPaciente(&hospital, idPaciente); // Función de disco
+                eliminarPaciente(&hospital, idPaciente); 
                 break;
             }
-            case 13: { // Eliminar doctor (Lógico)
+            case 13: { 
                 int idDoctor = obtenerEntero("ID del doctor a ELIMINAR logicamente: ");
-                eliminarDoctor(&hospital, idDoctor); // Función de disco
+                eliminarDoctor(&hospital, idDoctor); 
                 break;
             }
             case 0:
@@ -1539,7 +1537,7 @@ int main() {
                 break;
         }
         
-        // Pausar y limpiar solo si no es la opción de salir
+        
         if (opcion != 0) {
             cout << "\nPresione ENTER para continuar...\n";
             cin.get();
@@ -1548,8 +1546,8 @@ int main() {
 
     } while (opcion != 0);
 
-    // 2. GUARDAR ESTADO GLOBAL Y LIMPIEZA
-    destruirHospital(&hospital); // Función que ahora guarda el estado final en hospital.bin
+    
+    destruirHospital(&hospital); 
 
     return 0;
 }
