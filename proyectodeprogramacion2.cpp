@@ -3,7 +3,8 @@
 #include <ctime>
 #include <iomanip>
 #include <fstream>
-
+#include <limits> 
+#include <cctype>
 using namespace std;   
 
 
@@ -584,13 +585,15 @@ bool enlazarYAgregarConsulta(Hospital* h, int pacienteID, HistorialMedico nuevaC
         consultaActual.siguienteConsultaID = nuevaConsultaID; // Lo enlazamos al nuevo registro
         
         
-        bool agregarHistorialMedico(HistorialMedico consultaActual); 
+
     }
     pacienteActual.cantidadConsultas++;
     actualizarPaciente(pacienteActual); // Sobrescribe el paciente con el nuevo enlace/contador.
 
     return true;
 }
+bool agregarHistorialMedico(HistorialMedico consultaActual);
+
 void agregarHistorial(Hospital* h, int pacienteID) {
     // Ya no necesitas checar capacidad; la capacidad es el disco.
 
@@ -1040,7 +1043,65 @@ void listarTodosDoctores() {
               
     archivo.close();
 }
+int compararCadenas(const char* s1, const char* s2) {
+    // Itera mientras ambas cadenas tengan caracteres
+    while (*s1 && *s2) {
+        // Compara los caracteres convertidos a minúsculas
+        if (tolower((unsigned char)*s1) != tolower((unsigned char)*s2)) {
+            return 1; // Diferentes
+        }
+        s1++;
+        s2++;
+    }
+    
+    // Si ambas terminaron al mismo tiempo, son iguales.
+    // Se usa el operador ternario para retornar 0 (iguales) o 1 (diferentes)
+    return (*s1 == *s2) ? 0 : 1; 
+}
+void buscarDoctoresPorEspecialidad(const char* especialidadBuscada) {
+    const char* nombreArchivo = "doctores.bin";
+    std::ifstream archivo(nombreArchivo, std::ios::binary);
+    
+    if (!archivo.is_open()) {
+        std::cerr << "Error: No se pudo abrir el archivo de doctores." << std::endl;
+        return;
+    }
+    
+    ArchivoHeader header;
+    // 1. Leer el encabezado para saber cuántos registros hay
+    archivo.read((char*)&header, sizeof(ArchivoHeader));
+    
+    Doctor temp;
+    int encontrados = 0;
+    
+    std::cout << "\n--- Doctores en la especialidad: " << especialidadBuscada << " ---\n";
 
+    // 2. Iterar sobre todos los registros escritos
+    for (int i = 0; i < header.cantidadRegistros; i++) {
+        // 3. Leer un registro
+        archivo.read((char*)&temp, sizeof(Doctor));
+        
+        // 4. Comprobar condiciones de búsqueda
+        if (!temp.eliminado) { // Solo si no ha sido eliminado lógicamente
+            // Usar compararCadenas para ignorar mayúsculas/minúsculas
+            if (compararCadenas(temp.especialidad, especialidadBuscada) == 0) {
+                // 5. Imprimir el registro encontrado
+                std::cout << "ID: " << temp.id 
+                          << ", Nombre: " << temp.nombre 
+                          << ", Cédula: " << temp.cedula 
+                          << ", Pacientes asignados: " << temp.capacidadPacientes
+                          << std::endl;
+                encontrados++;
+            }
+        }
+    }
+    
+    archivo.close();
+
+    if (encontrados == 0) {
+        std::cout << "No se encontraron doctores activos en esa especialidad." << std::endl;
+    }
+}
 
 bool eliminarDoctor(Hospital* h, int id) {
     const char* nombreArchivo = "doctores.bin";
@@ -1160,7 +1221,10 @@ Cita obtenerCitaPorIndice(int indiceBuscado);
 
 int buscarIndiceCitaDeID(int idBuscado);
 
+bool atenderCita(Hospital* h, int idCita, const char* diagnostico, double costo);
+
 bool actualizarCita(Cita citaModificada);
+
 bool cancelarCita_Disco(int idCita) {
     // 1. Buscar la cita y obtener su índice en disco
     int indice = buscarIndiceCitaDeID(idCita); 
@@ -1330,6 +1394,7 @@ int obtenerEntero(const char* prompt) {
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     return valor;
 }
+bool agregarPaciente(Hospital* h); 
 
 int main() {
     Hospital hospital;
