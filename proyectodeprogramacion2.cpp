@@ -36,7 +36,7 @@ struct Paciente {
     char apellido[50];
     char cedula[20];
     int edad;
-    char sexo;
+    char sexo [2];
     char tipoSangre[5];
     char telefono[15];
     char direccion[100];
@@ -74,7 +74,7 @@ struct Doctor {
     float costoConsulta;
     char horarioAtencion[50];
     char telefono[15];
-    char email[50];
+    char email[100];
     int pacientesIDs [50];
     int citas [30];
     bool activo;
@@ -108,7 +108,7 @@ struct Cita {
     char observaciones[200];
     int ConsultaID;
     bool confirmada;
-    bool atendida;
+
     int consultasID;
     int activa;
 
@@ -182,24 +182,37 @@ ArchivoHeader leerHeader(const char* nombreArchivo) {
     archivo.close();
     return header;
 }
-
-void obtenerCadena(char* destino, size_t tamanoMax) {
-    if (tamanoMax == 0) return;
-
-    // 1. Usar getline para leer hasta el salto de linea
-    cin.getline(destino, tamanoMax);
-
-    // 2. Comprobar si hubo un fallo en la lectura (ej. se introdujo más texto del permitido)
-    if (cin.fail()) {
-        // La lectura falló o el string fue truncado
-        cin.clear(); // Limpiar la bandera de error
-        
-        // Ignorar el exceso de caracteres en el buffer
+int obtenerEntero(const char* prompt) {
+    int valor;
+    cout << prompt;
+    while (!(cin >> valor)) {
+        cout << "Entrada invalida. Ingrese un numero: ";
+        cin.clear();
+        // Limpiar el buffer de entrada en caso de error
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
     }
     
-    // 3. Asegurar el terminador nulo en el último byte por si acaso (aunque getline lo hace)
-    destino[tamanoMax - 1] = '\0';
+    cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
+
+    return valor;
+}
+void obtenerCadena(char* destino, size_t tamano) {
+    
+    if (cin.peek() == '\n') { 
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+    
+    // Lectura real de la línea
+    cin.getline(destino, tamano);
+
+    // Manejo de error si la línea fue demasiado larga
+    if (cin.fail()) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        // Opcional: strncpy(destino, "", tamano); si quieres asegurar un string vacío
+    }
+
+
 }
 float obtenerFlotante() {
     float valor;
@@ -300,7 +313,8 @@ bool inicializarSistema() {
     
     return true; 
 }
-void guardarMetadatos() {
+
+bool guardarMetadatos() {
     
     ofstream file("hospital.bin", ios::out | ios::binary);
     
@@ -315,83 +329,6 @@ void guardarMetadatos() {
         // Es un error crítico si el sistema no puede guardar el Header.
         cerr << "ERROR: No se pudieron guardar los metadatos en hospital.bin." << endl;
     }
-}
-bool crearPaciente_BIN() {
-    // 1. Inicializar la estructura Paciente (se usa el constructor por defecto)
-    Paciente nuevoPaciente{}; 
-    
-    // 2. Asignar el ID único del sistema y actualizar el contador global
-    nuevoPaciente.id = hospital.nextPacienteID;
-    
-    // 3. Recolectar datos del usuario (Usando funciones de entrada asumidas)
-    cout << "\n--- REGISTRANDO NUEVO PACIENTE ID " << nuevoPaciente.id << " ---\n";
-
-    // --- Placeholder de datos para fines de compilación ---
-    strncpy(nuevoPaciente.nombre, "Nuevo", sizeof(nuevoPaciente.nombre) - 1);
-    strncpy(nuevoPaciente.apellido, "Paciente", sizeof(nuevoPaciente.apellido) - 1);
-    strncpy(nuevoPaciente.cedula, "123456789", sizeof(nuevoPaciente.cedula) - 1);
-    nuevoPaciente.edad = 30;
-    
-    nuevoPaciente.activo = true;           // Marcado como activo
-    nuevoPaciente.primerConsultaID = 0;    // Lista enlazada de consultas vacía
-    nuevoPaciente.cantidadCitas = 0;       // Sin citas agendadas inicialmente
-
-    
-    ofstream file("pacientes.bin", ios::out | ios::app | ios::binary);
-    
-    if (!file.is_open()) {
-        cerr << "ERROR: No se pudo abrir el archivo pacientes.bin para escritura." << endl;
-        return false;
-    }
-
-    // 6. Escribir la estructura completa al final del archivo
-    file.write(reinterpret_cast<const char*>(&nuevoPaciente), sizeof(Paciente));
-    
-    if (file.fail()) {
-        cerr << "ERROR: Falló la escritura del nuevo registro de paciente." << endl;
-        file.close();
-        return false;
-    }
-    
-    file.close();
-
-    // 7. Actualizar la variable global de metadatos (Header)
-    hospital.nextPacienteID++;
-    hospital.cantidadPacientesActivos++;
-
-    // 8. Persistir los metadatos actualizados en hospital.bin
-    guardarMetadatos();
-
-    cout << " Paciente ID " << nuevoPaciente.id << " registrado exitosamente." << endl;
-    return true;
-}
-
-int buscarIndiceDeID(int id) {
-    const char* nombreArchivo = "pacientes.bin";
-    ifstream archivo(nombreArchivo, ios::binary);
-    
-    if (!archivo.is_open()) {
-        cerr << "Error: No se pudo abrir el archivo de pacientes para busqueda." << endl;
-        return -1;
-    }
-
-    ArchivoHeader header;
-    archivo.read((char*)&header, sizeof(ArchivoHeader)); 
-    
-    Paciente temp; // Una variable temporal para leer un registro a la vez
-    
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        // Leer un solo registro en la variable temporal
-        archivo.read((char*)&temp, sizeof(Paciente));
-        
-        if (temp.id == id && !temp.eliminado) {
-            archivo.close();
-            return i; // ¡Encontrado! Retornamos la posición (índice).
-        }
-    }
-    
-    archivo.close();
-    return -1; // ID no encontrado.
 }
 Paciente obtenerPacientePorCedula(const char* cedula) {
     const char* nombreArchivo = "pacientes.bin";
@@ -426,6 +363,145 @@ Paciente obtenerPacientePorCedula(const char* cedula) {
     archivo.close();
     return pEncontrado; // Retornar estructura vacía si no se encuentra
 }
+bool validarEmail(const char* email) {
+    // 1. Verificar nulo o vacío
+    if (email == nullptr || strlen(email) == 0) return false;
+    
+    // 2. Verificar el límite de tamaño fijo (Asumiendo 100 caracteres)
+    if (strlen(email) > 100) {
+        cerr << "El email excede el límite de 100 caracteres." << endl;
+        return false;
+    }
+    if (strchr(email, '@') == nullptr) {
+        cerr << "El email debe contener el símbolo '@'." << endl;
+        return false;
+    }
+    
+    return true;
+}
+void crearPaciente_BIN() {
+    Paciente nuevoPaciente{}; // Inicialización por valor: todos los campos a 0/false/nulo
+    
+    // 1. Asignación del ID (tomado de la metadata global)
+    nuevoPaciente.id = hospital.nextPacienteID;
+
+    cout << "\n--- REGISTRANDO NUEVO PACIENTE ID " << nuevoPaciente.id << " ---\n";
+    
+    // --- RECOLECCIÓN Y VALIDACIÓN DE DATOS ---
+    
+    // Nombre
+    cout << "Nombre(s): ";
+    obtenerCadena(nuevoPaciente.nombre, sizeof(nuevoPaciente.nombre));
+    
+    // Apellido
+    cout << "Apellido(s): ";
+    obtenerCadena(nuevoPaciente.apellido, sizeof(nuevoPaciente.apellido));
+    
+    // Cédula (Validación de duplicidad)
+    do {
+        cout << "Cédula: ";
+        obtenerCadena(nuevoPaciente.cedula, sizeof(nuevoPaciente.cedula));
+        Paciente pExistente = obtenerPacientePorCedula(nuevoPaciente.cedula);
+        
+        // La validación comprueba si ya existe un paciente activo con esa cédula.
+        if (pExistente.id != 0 && pExistente.activo) { 
+            cerr << "ERROR: Ya existe un paciente activo con esa cédula (ID: " << pExistente.id << ").\n";
+            // No hay break; se repite el loop.
+        } else {
+            break; 
+        }
+    } while (true);
+    
+    // Email (Validación de formato)
+    do {
+        cout << "Email: ";
+        obtenerCadena(nuevoPaciente.email, sizeof(nuevoPaciente.email));
+        // Asumimos que validarEmail retorna true si el formato es correcto.
+        if (validarEmail(nuevoPaciente.email)) {
+            break;
+        }
+        cerr << "ERROR: Formato de email inválido. Intente de nuevo.\n";
+    } while (true);
+
+    // Dirección
+    cout << "Dirección: ";
+    obtenerCadena(nuevoPaciente.direccion, sizeof(nuevoPaciente.direccion));
+    
+    // Teléfono
+    cout << "Teléfono: ";
+    obtenerCadena(nuevoPaciente.telefono, sizeof(nuevoPaciente.telefono));
+    
+    // Edad
+    nuevoPaciente.edad = obtenerEntero("Edad: ");
+    
+    // Sexo (Ahora debe ser un array char[2] en tu estructura)
+    cout << "Sexo (M/F/O): ";
+    obtenerCadena(nuevoPaciente.sexo, sizeof(nuevoPaciente.sexo));
+    
+    // Tipo de Sangre
+    cout << "Tipo de Sangre: ";
+    obtenerCadena(nuevoPaciente.tipoSangre, sizeof(nuevoPaciente.tipoSangre));
+    
+    // Alergias
+    cout << "Alergias: ";
+    obtenerCadena(nuevoPaciente.alergias, sizeof(nuevoPaciente.alergias));
+    
+    // Observaciones
+    cout << "Observaciones iniciales: ";
+    obtenerCadena(nuevoPaciente.observaciones, sizeof(nuevoPaciente.observaciones));
+    
+    // --- ASIGNACIÓN DE BANDERAS Y CONTADORES ---
+    nuevoPaciente.activo = true; // El paciente está activo
+    nuevoPaciente.cantidadCitas = 0;
+    nuevoPaciente.cantidadConsultas = 0;
+    nuevoPaciente.primerConsultaID = 0;
+    
+    ofstream archivo("pacientes.bin", ios::app | ios::binary); 
+    
+    if (!archivo.is_open()) {
+        cerr << "\n ERROR: No se pudo abrir pacientes.bin para escritura." << endl;
+        return;
+    }
+
+    if (archivo.write(reinterpret_cast<const char*>(&nuevoPaciente), sizeof(Paciente))) {
+        // 3. Actualizar la metadata global solo si la escritura fue exitosa
+        hospital.nextPacienteID++; 
+        cout << "\nPaciente ID " << nuevoPaciente.id << " (" << nuevoPaciente.nombre << " " << nuevoPaciente.apellido << ") registrado exitosamente.\n";
+    } else {
+        cerr << "\n ERROR: Falló la escritura del nuevo registro en el disco.\n";
+    }
+
+    archivo.close();
+}
+
+int buscarIndiceDeID(int id) {
+    const char* nombreArchivo = "pacientes.bin";
+    ifstream archivo(nombreArchivo, ios::binary);
+    
+    if (!archivo.is_open()) {
+        cerr << "Error: No se pudo abrir el archivo de pacientes para busqueda." << endl;
+        return -1;
+    }
+
+    ArchivoHeader header;
+    archivo.read((char*)&header, sizeof(ArchivoHeader)); 
+    
+    Paciente temp; // Una variable temporal para leer un registro a la vez
+    
+    for (int i = 0; i < header.cantidadRegistros; i++) {
+        // Leer un solo registro en la variable temporal
+        archivo.read((char*)&temp, sizeof(Paciente));
+        
+        if (temp.id == id && !temp.eliminado) {
+            archivo.close();
+            return i; // ¡Encontrado! Retornamos la posición (índice).
+        }
+    }
+    
+    archivo.close();
+    return -1; // ID no encontrado.
+}
+
 
 Paciente buscarPacientePorID_BIN(int id) {
     Paciente paciente; // Estructura local, inicializada con id=0 por defecto
@@ -902,14 +978,11 @@ bool crearDoctor_BIN() {
 
     nuevoDoctor.aniosExperiencia= obtenerEntero("Numero de Licencia: ");
     
-    // ... recolectar el resto de campos (telefono, email, etc.)
-    
-    // 4. Setear banderas y contadores iniciales
-    nuevoDoctor.activo = true;           // Marcado como activo
-    nuevoDoctor.capacidadPacientes = 0;    // Sin pacientes asignados
-    // Los arrays de punteros binarios deben estar en 0 por defecto.
+    nuevoDoctor.activo = true;           
+    nuevoDoctor.capacidadPacientes = 0;    
+   
 
-    // 5. Abrir el archivo en modo APPEND (escritura al final)
+    
     ofstream file("doctores.bin", ios::out | ios::app | ios::binary);
     
     if (!file.is_open()) {
@@ -917,22 +990,52 @@ bool crearDoctor_BIN() {
         return false;
     }
 
-    // 6. Escribir la estructura completa al final del archivo
+    
     file.write(reinterpret_cast<const char*>(&nuevoDoctor), sizeof(Doctor));
     file.close();
 
-    // 7. Actualizar la variable global de metadatos (Header)
+    
     hospital.nextDoctorID++;
     hospital.cantidadDoctoresActivos++;
 
     // 8. Persistir los metadatos actualizados en hospital.bin
     guardarMetadatos();
 
-    cout << "✅ Doctor ID " << nuevoDoctor.id << " registrado exitosamente." << endl;
+    cout << " Doctor ID " << nuevoDoctor.id << " registrado exitosamente." << endl;
     return true;
 }
 
+bool modificarDoctor_BIN(const Doctor& dModificado) {
+    // 1. Validar que el ID del doctor es positivo
+    if (dModificado.id <= 0) {
+        cerr << "Error: ID de doctor inválido para modificación." << endl;
+        return false;
+    }
+    
+    
+    fstream file("doctores.bin", ios::in | ios::out | ios::binary);
+    if (!file.is_open()) {
+        cerr << "ERROR: No se pudo abrir el archivo doctores.bin para modificación." << endl;
+        return false;
+    }
 
+    
+    long pos = (long)(dModificado.id - 1) * sizeof(Doctor);
+
+    // 4. Mover el puntero de ESCRITURA al inicio del registro deseado
+    file.seekp(pos);
+
+    // 5. Sobrescribir SOLO el registro completo del disco con los nuevos datos
+    if (file.write(reinterpret_cast<const char*>(&dModificado), sizeof(Doctor))) {
+        file.close();
+        // cout << "Registro de Doctor ID " << dModificado.id << " modificado con éxito." << endl; // Opcional
+        return true;
+    } else {
+        cerr << "ERROR: Falló la escritura del registro de Doctor ID " << dModificado.id << "." << endl;
+        file.close();
+        return false;
+    }
+}
 
 
 int buscarIndiceDoctorDeID(int id) {
@@ -981,68 +1084,83 @@ Doctor obtenerDoctorPorIndice(int indice) {
     archivo.close();
     return d;
 }
-bool actualizarDoctor(Doctor doctorModificado);
+
 
 Doctor obtenerDoctorPorID(int id) {
-    // 1. Encontrar la ubicación del registro
+    
     int indice = buscarIndiceDoctorDeID(id);
     
-    // 2. Si se encuentra, leer el registro directamente (Acceso Aleatorio)
+    
     if (indice != -1) {
         return obtenerDoctorPorIndice(indice);
     }
     
-    // 3. Si no se encuentra, devolver una estructura Doctor vacía (ID 0)
+
     return Doctor{}; 
 }
 
-Doctor obtenerDoctorPorCedula(const char* cedula) {
-    const char* nombreArchivo = "doctores.bin";
-    Doctor dEncontrado; 
+Doctor obtenerDoctorPorCedula_BIN(const char* cedulaBuscada) {
+    Doctor dEncontrado{}; 
     
-    std::ifstream archivo(nombreArchivo, std::ios::binary);
+    ifstream archivo("doctores.bin", ios::binary);
     
-    if (!archivo.is_open()) return dEncontrado;
+    if (!archivo.is_open()) {
+        cerr << "Error: No se pudo abrir el archivo doctores.bin." <<endl;
+        return dEncontrado;
+    }
     
-    ArchivoHeader header;
-    archivo.read((char*)&header, sizeof(ArchivoHeader)); 
+    int totalRegistrosCreados = hospital.nextDoctorID - 1; 
 
-    Doctor temp; 
+    Doctor temp{}; 
     
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        archivo.read((char*)&temp, sizeof(Doctor));
-        
-        // Comprobar cédula y estado 'eliminado'
-        if (!temp.eliminado && strcmp(temp.cedula, cedula) == 0) { 
-            archivo.close();
-            return temp; // ¡Cédula encontrada!
+    for (int id = 1; id <= totalRegistrosCreados; id++) {
+        long pos = (long)(id - 1) * sizeof(Doctor);
+        archivo.seekg(pos);
+
+        // 3. Leer un registro
+        if (!archivo.read(reinterpret_cast<char*>(&temp), sizeof(Doctor))) {
+            // Si la lectura falla, salimos.
+            break; 
+        }
+        if (temp.id > 0 && temp.activo) { 
+            // Comparación de cédula
+            if (strcmp(temp.cedula, cedulaBuscada) == 0) {
+                archivo.close();
+                return temp; 
+            }
         }
     }
     
     archivo.close();
-    return dEncontrado; 
+    return dEncontrado; // No se encontró ningún doctor activo con esa cédula
 }
+Doctor obtenerDoctorPorEspecialidad_BIN(const char* especialidadBuscada) {
+    Doctor dEncontrado{}; 
+    
+    ifstream archivo("doctores.bin", ios::binary);
+    
+    if (!archivo.is_open()) {
+        cerr << "Error: No se pudo abrir el archivo doctores.bin." << endl;
+        return dEncontrado;
+    }
+    
+    int totalRegistrosCreados = hospital.nextDoctorID - 1; 
 
-Doctor obtenerDoctorPorEspecialidad(const char* especialidad) {
-    const char* nombreArchivo = "doctores.bin";
-    Doctor dEncontrado = {}; 
+    Doctor temp{}; 
     
-    ifstream archivo(nombreArchivo, ios::binary);
-    
-    if (!archivo.is_open()) return dEncontrado;
-    
-    ArchivoHeader header;
-    archivo.read((char*)&header, sizeof(ArchivoHeader)); 
+    for (int id = 1; id <= totalRegistrosCreados; id++) {
+        long pos = (long)(id - 1) * sizeof(Doctor);
+        archivo.seekg(pos);
 
-    Doctor temp; 
-    
-    for (int i = 0; i < header.cantidadRegistros; i++) {
-        archivo.read((char*)&temp, sizeof(Doctor));
+        if (!archivo.read(reinterpret_cast<char*>(&temp), sizeof(Doctor))) {
+            break; 
+        }
         
-        
-        if (!temp.eliminado && strcmp(temp.especialidad, especialidad) == 0) { 
-            archivo.close();
-            return temp; // ¡Especialidad encontrada!
+        if (temp.id > 0 && temp.activo) { 
+            if (strcmp(temp.especialidad, especialidadBuscada) == 0) {
+                archivo.close();
+                return temp; 
+            }
         }
     }
     
@@ -1078,7 +1196,7 @@ bool asignarPacienteADoctor_Disco(int idDoctor, int idPaciente) {
     doctor.fechaModificacion = time(NULL); // Actualizar metadata
 
     // 4. Sobrescribir el registro del Doctor en doctores.bin (Escritura con Acceso Aleatorio)
-    if (actualizarDoctor(doctor)) {
+    if (modificarDoctor_BIN(doctor)) {
         cout << "Paciente ID " << idPaciente << " asignado al Dr. " << doctor.nombre << ".\n";
         return true;
     }
@@ -1145,7 +1263,7 @@ bool removerPacienteDeDoctor_Disco(int idDoctor, int idPaciente) {
     doctor.fechaModificacion = time(NULL);
 
     
-    if (actualizarDoctor(doctor)) {
+    if (modificarDoctor_BIN(doctor)) {
         cout << "Paciente ID " << idPaciente << " removido del Dr. " << doctor.nombre << ".\n";
         return true;
     }
@@ -1211,8 +1329,7 @@ int compararCadenas(const char* s1, const char* s2) {
         s2++;
     }
     
-    // Si ambas terminaron al mismo tiempo, son iguales.
-    // Se usa el operador ternario para retornar 0 (iguales) o 1 (diferentes)
+
     return (*s1 == *s2) ? 0 : 1; 
 }
 void buscarDoctoresPorEspecialidad_BIN(const char* especialidadBuscada) {
@@ -1230,19 +1347,19 @@ void buscarDoctoresPorEspecialidad_BIN(const char* especialidadBuscada) {
 
     int totalRegistrosCreados = hospital.nextDoctorID - 1; 
     
-    // 2. Iterar sobre el rango de IDs de los registros (desde 1 hasta el último creado)
+    
     for (int id = 1; id <= totalRegistrosCreados; id++) {
-        // Para lectura secuencial, debes mover el puntero al inicio de la posición (ID - 1)
+
         long pos = (long)(id - 1) * sizeof(Doctor);
         archivo.seekg(pos);
 
         // 3. Leer un registro
         if (!archivo.read(reinterpret_cast<char*>(&temp), sizeof(Doctor))) {
-            // Si la lectura falla antes de tiempo, salimos.
+            
             break; 
         }
         if (temp.activo) { 
-            // Usamos 'strcmp' si no tienes 'compararCadenas' implementada
+            
             if (strcmp(temp.especialidad, especialidadBuscada) == 0) {
                 
                 cout << "ID: " << temp.id 
@@ -1279,17 +1396,17 @@ Doctor buscarDoctorPorID_BIN(int id) {
     
     long pos = (long)(id - 1) * sizeof(Doctor);
 
-    // 4. Verificar si la posición es válida dentro del archivo
+    
     file.seekg(0, ios::end);         // Mover puntero al final
     long tamanoArchivo = file.tellg(); // Obtener tamaño total en bytes
     
-    // Si la posición calculada está fuera del límite del archivo, el registro no existe
+    
     if (pos >= tamanoArchivo) {
         file.close();
         return doctor;
     }
 
-    // 5. Mover el puntero de lectura al inicio del registro deseado
+   
     file.seekg(pos);
 
     // 6. Leer SOLO el registro completo
@@ -1300,45 +1417,15 @@ Doctor buscarDoctorPorID_BIN(int id) {
             return doctor; // Éxito: Registro encontrado y devuelto
         } 
     } else {
-        // Fallo en la lectura (ej. archivo más corto de lo esperado en esa posición)
+        
         cerr << "ADVERTENCIA: Error al leer el registro ID " << id << " en la posición calculada." << endl;
     }
 
-    // 8. Cerrar el archivo y retornar el objeto vacío si no se encontró o estaba inactivo
+    
     file.close();
     return Doctor{}; 
 }
-bool modificarDoctor_BIN(const Doctor& dModificado) {
-    // 1. Validar que el ID del doctor es positivo
-    if (dModificado.id <= 0) {
-        cerr << "Error: ID de doctor inválido para modificación." << endl;
-        return false;
-    }
-    
-    
-    fstream file("doctores.bin", ios::in | ios::out | ios::binary);
-    if (!file.is_open()) {
-        cerr << "ERROR: No se pudo abrir el archivo doctores.bin para modificación." << endl;
-        return false;
-    }
 
-    
-    long pos = (long)(dModificado.id - 1) * sizeof(Doctor);
-
-    // 4. Mover el puntero de ESCRITURA al inicio del registro deseado
-    file.seekp(pos);
-
-    // 5. Sobrescribir SOLO el registro completo del disco con los nuevos datos
-    if (file.write(reinterpret_cast<const char*>(&dModificado), sizeof(Doctor))) {
-        file.close();
-        // cout << "Registro de Doctor ID " << dModificado.id << " modificado con éxito." << endl; // Opcional
-        return true;
-    } else {
-        cerr << "ERROR: Falló la escritura del registro de Doctor ID " << dModificado.id << "." << endl;
-        file.close();
-        return false;
-    }
-}
 HistorialMedico buscarHistorialMedicoPorID_BIN(int id) {
     HistorialMedico historial{}; // Inicialización: id=0 por defecto
 
@@ -1573,96 +1660,53 @@ bool crearCita_BIN() {
 }
 Cita obtenerCitaPorIndice(int indiceBuscado);
 
-int buscarIndiceCitaDeID(int idBuscado);
+Cita buscarCitaPorID_BIN(int id) {
+    Cita cita{}; // Inicialización de valor: garantiza que id=0 por defecto
 
-bool atenderCita_BIN(int idCita) {
-    // 1. Buscar y Validar la Cita
-    Cita cita = buscarCitaPorID_BIN(idCita);
-
-    if (cita.id == 0 || !cita.activa) {
-        cerr << "Error: Cita ID " << idCita << " no encontrada o ya está inactiva/cancelada." << endl;
-        return false;
-    }
-    
-    if (cita.atendida) {
-        cout << "ADVERTENCIA: La cita ID " << idCita << " ya fue marcada como completada." << endl;
-      
-        return false; 
+    // 1. Validar ID
+    if (id <= 0) {
+        return cita; 
     }
 
-    // 2. Inicializar y Recolectar datos del Historial (Consulta)
-    HistorialMedico nuevaConsulta{};
-    
-    // --- Recolección de Datos ---
-    cout << "\n--- ATENDER CITA ID " << idCita << " ---\n";
-    cout << "Ingrese el Diagnóstico: ";
-    // Asumo que obtenerCadena existe y limpia el buffer.
-    obtenerCadena(nuevaConsulta.diagnostico, sizeof(nuevaConsulta.diagnostico)); 
-
-    cout << "Ingrese el Tratamiento: ";
-    obtenerCadena(nuevaConsulta.tratamiento, sizeof(nuevaConsulta.tratamiento)); 
-
-    cout << "Medicamentos (si aplica): ";
-    obtenerCadena(nuevaConsulta.tratamiento, sizeof(nuevaConsulta.tratamiento)); 
-
-    cout << "Costo Final de la consulta ($): ";
-    
-    nuevaConsulta.costo = obtenerFlotante();
-    
-
-    nuevaConsulta.idDoctor = cita.idDoctor; 
-    strncpy(nuevaConsulta.fecha, cita.fecha, sizeof(nuevaConsulta.fecha));
-    strncpy(nuevaConsulta.hora, cita.hora, sizeof(nuevaConsulta.hora));
-    
-    
-    cita.atendida = true;
-    cita.activa = false; 
-
-    
-    if (!modificarCita_BIN(cita)) {
-        cerr << "ERROR: No se pudo marcar la cita ID " << idCita << " como completada." << endl;
-        return false;
-    }
-
-    
-    if (!crearYEnlazarConsulta_BIN(cita.idPaciente, nuevaConsulta)) {
-        cerr << "ERROR: La cita fue marcada como completada, pero falló el registro del historial médico." << endl;
-        return false;
-    }
-
-    cout << " Cita ID " << idCita << " atendida y Historial Médico enlazado exitosamente." << endl;
-    return true;
-}
-bool modificarCita_BIN(const Cita& cModificada) {
-    // 1. Validar que el ID de la cita es positivo
-    if (cModificada.id <= 0) {
-        cerr << "Error: ID de cita inválido para modificación." << endl;
-        return false;
-    }
-    
-    
-    fstream file("citas.bin", ios::in | ios::out | ios::binary);
+    // 2. Abrir el archivo en modo lectura binaria
+    fstream file("citas.bin", ios::in | ios::binary);
     if (!file.is_open()) {
-        cerr << "ERROR: No se pudo abrir el archivo citas.bin para modificación." << endl;
-        return false;
+        cerr << "ERROR: No se pudo abrir el archivo citas.bin para lectura." << endl;
+        return cita;
     }
 
-   
-    long pos = (long)(cModificada.id - 1) * sizeof(Cita);
+    // 3. Calcular la posición del registro (Acceso Aleatorio)
+    // Posición = (ID - 1) * sizeof(Registro)
+    long pos = (long)(id - 1) * sizeof(Cita);
 
+    // 4. Verificar si la posición es válida dentro del archivo
+    file.seekg(0, ios::end);         // Mover puntero al final
+    long tamanoArchivo = file.tellg(); // Obtener tamaño total en bytes
     
-    file.seekp(pos);
-
-    // 5. Sobrescribir SOLO el registro completo del disco con los nuevos datos
-    if (file.write(reinterpret_cast<const char*>(&cModificada), sizeof(Cita))) {
+    // Si la posición calculada está fuera del límite del archivo, el registro no existe
+    if (pos >= tamanoArchivo) {
         file.close();
-        // cout << "Registro de Cita ID " << cModificada.id << " modificado con éxito." << endl; // Opcional
-        return true;
-    } else {
-        cerr << "ERROR: Falló la escritura del registro de Cita ID " << cModificada.id << "." << endl;
-        file.close();
-        return false;
+        return cita;
     }
+
+    // 5. Mover el puntero de lectura al inicio del registro deseado
+    file.seekg(pos);
+
+    // 6. Leer SOLO el registro completo
+    if (file.read(reinterpret_cast<char*>(&cita), sizeof(Cita))) {
+        // 7. Verificar que el registro leído corresponde al ID buscado
+        if (cita.id == id) {
+            file.close();
+            return cita; // Éxito: Registro encontrado y devuelto
+        } 
+    } else {
+        // Fallo en la lectura
+        cerr << "ADVERTENCIA: Error al leer el registro ID " << id << " en la posición calculada." << endl;
+    }
+
+    // 8. Cerrar el archivo y retornar el objeto vacío si no se encontró
+    file.close();
+    return Cita{}; 
 }
 bool crearYEnlazarConsulta_BIN(int idPaciente, HistorialMedico nuevaConsultaData) {
     // 1. Obtener el Paciente (Necesario para actualizar los punteros)
@@ -1726,85 +1770,125 @@ bool crearYEnlazarConsulta_BIN(int idPaciente, HistorialMedico nuevaConsultaData
 
     return true;
 }
-Cita buscarCitaPorID_BIN(int id) {
-    Cita cita{}; // Inicialización de valor: garantiza que id=0 por defecto
+bool modificarCita_BIN(const Cita& cModificada);
 
-    // 1. Validar ID
-    if (id <= 0) {
-        return cita; 
-    }
-
-    // 2. Abrir el archivo en modo lectura binaria
-    fstream file("citas.bin", ios::in | ios::binary);
-    if (!file.is_open()) {
-        cerr << "ERROR: No se pudo abrir el archivo citas.bin para lectura." << endl;
-        return cita;
-    }
-
-    // 3. Calcular la posición del registro (Acceso Aleatorio)
-    // Posición = (ID - 1) * sizeof(Registro)
-    long pos = (long)(id - 1) * sizeof(Cita);
-
-    // 4. Verificar si la posición es válida dentro del archivo
-    file.seekg(0, ios::end);         // Mover puntero al final
-    long tamanoArchivo = file.tellg(); // Obtener tamaño total en bytes
+bool atenderCita_BIN(int idCita) {
+    // 1. Buscar y Validar la Cita
+    Cita cita = buscarCitaPorID_BIN(idCita);
+    int nuevoIdConsulta = 0;
     
-    // Si la posición calculada está fuera del límite del archivo, el registro no existe
-    if (pos >= tamanoArchivo) {
-        file.close();
-        return cita;
+
+    if (cita.id == 0 || !cita.activa) {
+        cerr << "Error: Cita ID " << idCita << " no encontrada o ya está inactiva/cancelada." << endl;
+        return false;
+    }
+    
+    if (cita.atendida) {
+        cout << "ADVERTENCIA: La cita ID " << idCita << " ya fue marcada como completada." << endl;
+      
+        return false; 
     }
 
-    // 5. Mover el puntero de lectura al inicio del registro deseado
-    file.seekg(pos);
+    // 2. Inicializar y Recolectar datos del Historial (Consulta)
+    HistorialMedico nuevaConsulta{};
+    
+    // --- Recolección de Datos ---
+    cout << "\n--- ATENDER CITA ID " << idCita << " ---\n";
+    cout << "Ingrese el Diagnóstico: ";
+    // Asumo que obtenerCadena existe y limpia el buffer.
+    obtenerCadena(nuevaConsulta.diagnostico, sizeof(nuevaConsulta.diagnostico)); 
 
-    // 6. Leer SOLO el registro completo
-    if (file.read(reinterpret_cast<char*>(&cita), sizeof(Cita))) {
-        // 7. Verificar que el registro leído corresponde al ID buscado
-        if (cita.id == id) {
-            file.close();
-            return cita; // Éxito: Registro encontrado y devuelto
-        } 
-    } else {
-        // Fallo en la lectura
-        cerr << "ADVERTENCIA: Error al leer el registro ID " << id << " en la posición calculada." << endl;
+    cout << "Ingrese el Tratamiento: ";
+    obtenerCadena(nuevaConsulta.tratamiento, sizeof(nuevaConsulta.tratamiento)); 
+
+    cout << "Medicamentos (si aplica): ";
+    obtenerCadena(nuevaConsulta.tratamiento, sizeof(nuevaConsulta.tratamiento)); 
+
+    cout << "Costo Final de la consulta ($): ";
+    
+    nuevaConsulta.costo = obtenerFlotante();
+    
+
+    nuevaConsulta.idDoctor = cita.idDoctor; 
+    strncpy(nuevaConsulta.fecha, cita.fecha, sizeof(nuevaConsulta.fecha));
+    strncpy(nuevaConsulta.hora, cita.hora, sizeof(nuevaConsulta.hora));
+    
+    
+    cita.atendida = true;
+    cita.activa = false; 
+
+    
+    if (!modificarCita_BIN(cita)) {
+        cerr << "ERROR: No se pudo marcar la cita ID " << idCita << " como completada." << endl;
+        return false;
     }
 
-    // 8. Cerrar el archivo y retornar el objeto vacío si no se encontró
-    file.close();
-    return Cita{}; 
+if (nuevoIdConsulta > 0) {
+    // ➡️ Éxito: La consulta fue creada con el ID nuevoIdConsulta
+    cout << "✅ Historial médico creado y enlazado con éxito (ID: " << nuevoIdConsulta << ").\n";
+} else {
+    // ➡️ Fallo: La función devolvió 0.
+    cerr << "ERROR: Falló la creación o el enlazado del historial médico.\n";
+} return true;
 }
-bool actualizarCita(Cita citaModificada);
-
-bool cancelarCita_Disco(int idCita) {
-    // 1. Buscar la cita y obtener su índice en disco
-    int indice = buscarIndiceCitaDeID(idCita); 
-    if (indice == -1) {
-        cerr << "Error: Cita ID " << idCita << " no encontrada para cancelar.\n";
-        return false;
-    }
-
-    // 2. Leer la cita de disco
-    Cita cita = obtenerCitaPorIndice(indice);
-    
-    // 3. Modificar el estado (borrado lógico de estado)
-    if (strcmp(cita.estado, "pendiente") != 0) {
-        cerr << "Error: Cita ID " << idCita << " no está pendiente y no puede ser cancelada.\n";
+bool modificarCita_BIN(const Cita& cModificada) {
+    // 1. Validar que el ID de la cita es positivo
+    if (cModificada.id <= 0) {
+        cerr << "Error: ID de cita inválido para modificación." << endl;
         return false;
     }
     
-    strcpy(cita.estado, "cancelada");
-    cita.fechaModificacion = time(NULL);
+    
+    fstream file("citas.bin", ios::in | ios::out | ios::binary);
+    if (!file.is_open()) {
+        cerr << "ERROR: No se pudo abrir el archivo citas.bin para modificación." << endl;
+        return false;
+    }
 
-    // 4. Sobrescribir el registro actualizado en citas.bin
-    if (actualizarCita(cita)) {
-        cout << "Cita ID " << idCita << " cancelada exitosamente.\n";
-        
+   
+    long pos = (long)(cModificada.id - 1) * sizeof(Cita);
+
+    
+    file.seekp(pos);
+
+    // 5. Sobrescribir SOLO el registro completo del disco con los nuevos datos
+    if (file.write(reinterpret_cast<const char*>(&cModificada), sizeof(Cita))) {
+        file.close();
+        // cout << "Registro de Cita ID " << cModificada.id << " modificado con éxito." << endl; // Opcional
         return true;
+    } else {
+        cerr << "ERROR: Falló la escritura del registro de Cita ID " << cModificada.id << "." << endl;
+        file.close();
+        return false;
+    }
+}
+
+
+bool cancelarCita_BIN() {
+    int idCita = obtenerEntero("\nID de la Cita a cancelar: ");
+
+    // 1. Declarar y buscar la cita
+    Cita cita = buscarCitaPorID_BIN(idCita); 
+
+    // 2. Verificar si la cita fue encontrada y si está activa
+    if (cita.id == 0 || !cita.activa) {
+        cerr << "Error: Cita ID " << idCita << " no encontrada o ya está inactiva/cancelada." << endl;
+        return false;
     }
 
-    cerr << "Error al actualizar el registro de la cita en disco.\n";
-    return false;
+    // 3. Modificar el estado (aquí se resuelve tu error)
+    cita.activa = false; // Se recomienda usar la bandera activa/inactiva
+    // Si necesitas el campo 'estado':
+    strcpy(cita.estado, "CANCELADA");
+
+    // 4. Guardar los cambios en el disco
+    if (modificarCita_BIN(cita)) {
+        cout << "Cita ID " << cita.id << " ha sido cancelada exitosamente." << endl;
+        return true;
+    } else {
+        cerr << "Error al intentar guardar la cancelación de la Cita ID " << cita.id << "." << endl;
+        return false;
+    }
 }
 
 
@@ -1905,44 +1989,45 @@ void listarCitasPorDoctor(int idDoctor) {
 
 
 bool validarCedula(const char* cedula) {
+    // 1. Verificar nulo o vacío
     if (cedula == nullptr || strlen(cedula) == 0) return false;
-    if (strlen(cedula) > 20) return false;
+    
+    if (strlen(cedula) > 20) {
+        cerr << "La cédula excede el límite de 20 caracteres." << endl;
+        return false;
+    }
+    
+    // Aquí podrías agregar validación de solo dígitos si es necesario.
     return true;
 }
 
-bool validarEmail(const char* email) {
-    if (email == nullptr || strlen(email) == 0) return false;
-    if (strlen(email) > 100) return false;
-    return strchr(email, '@') != nullptr;
-}
 
 bool validarHora(const char* hora) {
-    if (strlen(hora) != 5) return false;
-    return (hora[2] == ':');
-}
-
-void destruirHospital(Hospital* hospital) {
-    cout << "\nGuardando configuracion global del hospital...\n";
+    if (strlen(hora) != 5) {
+        cerr << "El formato de hora debe ser exactamente HH:MM." << endl;
+        return false;
+    }
     
-    if (guardarMetadatos(hospital)) {
-        cout << "Estado global guardado exitosamente.\n";
-    } else {
-        cerr << "ADVERTENCIA: Fallo al guardar el estado global del hospital. Los IDs podrian resetearse.\n";
+    if (hora[2] != ':') {
+        cerr << "El formato de hora debe usar dos puntos (:) como separador." << endl;
+        return false;
     }
-
-    cout << "Destruccion de memoria en RAM completada.\n";
+    
+    return true;
 }
 
-int obtenerEntero(const char* prompt) {
-    int valor;
-    cout << prompt;
-    while (!(cin >> valor)) {
-        cerr << "Entrada invalida. Ingrese un numero entero: ";
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+void cerrarSistema_BIN() {
+    cout << "\n--- CERRANDO SISTEMA DE GESTIÓN ---\n";
+    
+    // Asume que guardarMetadatos() ahora lee la variable global 'hospital'.
+    if (guardarMetadatos()) {
+        cout << "✅ Estado global (Metadatos) guardado exitosamente en hospital.bin.\n";
+    } else {
+        cerr << "ADVERTENCIA: Fallo al guardar el estado global. Los IDs podrían perderse.\n";
     }
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-    return valor;
+
+    // Ya no necesitas liberar memoria dinámica de arrays.
+    cout << "Cierre de archivos y memoria completada.\n";
 }
 
 
@@ -1969,21 +2054,22 @@ int main() {
         cout << "| 9. Buscar paciente por Cedula        |\n"; 
         cout << "| 10. Buscar doctor por Especialidad   |\n"; 
         cout << "| 11. Buscar pacientes por Nombre      |\n"; 
-        cout << "| 12. Eliminar paciente (Lógico)       |\n"; 
-        cout << "| 13. Eliminar doctor (Lógico)         |\n"; 
+        cout << "| 12. Eliminar paciente                |\n"; 
+        cout << "| 13. Eliminar doctor                  |\n"; 
         cout << "| 0. Salir y Guardar                   |\n";
         cout << "+--------------------------------------+\n";
         opcion = obtenerEntero("Seleccione una opcion: ");
 
         
+    } while (opcion != 0);
 
         switch (opcion) {
             case 1: { 
-                crearPaciente_BIN(&hospital); 
+                crearPaciente_BIN(); 
                 break;
             }
             case 2: { 
-                crearDoctor_BIN(&hospital); 
+                crearDoctor_BIN(); 
                 break;
             }
             case 3: { 
@@ -1992,7 +2078,7 @@ int main() {
                 char fecha[11], hora[6];
                 cout << "Fecha (DD/MM/AAAA): "; cin.getline(fecha, 11);
                 cout << "Hora (HH:MM): "; cin.getline(hora, 6);
-                crearCita_BIN(&hospital, idPaciente, idDoctor, fecha, hora);
+                crearCita_BIN();
                 break;
             }
             case 4: { 
@@ -2016,7 +2102,7 @@ int main() {
             }
             case 6: { 
                 int idCancelar = obtenerEntero("Ingrese el ID de la cita que desea cancelar: ");
-                cancelarCita_Disco(idCancelar); 
+                cancelarCita_BIN(); 
                 break;
             }
             case 7: 
@@ -2041,7 +2127,7 @@ int main() {
                 char especialidad[51];
                 cout << "Ingrese la especialidad a buscar: ";
                 cin.getline(especialidad, 51);
-                buscarDoctoresPorEspecialidad(especialidad); 
+                buscarDoctoresPorEspecialidad_BIN(especialidad); 
                 break;
             }
             case 11: { 
@@ -2068,22 +2154,17 @@ int main() {
                 cout << "Opción no válida. Intente de nuevo.\n";
                 break;
         }
-        
-        
-        if (opcion != 0) {
+
+    if (opcion != 0) {
             cout << "\nPresione ENTER para continuar...\n";
-            cin.get();
+            
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
+            cin.get(); 
+            
             system("cls || clear");
         }
 
-    } while (opcion != 0);
-
-    if (!inicializarSistema()) { 
-    cerr << "FATAL: No se pudo inicializar el sistema. Terminando programa." << endl;
-    return 1;
-}
-    
-    destruirHospital(&hospital); 
+    cerrarSistema_BIN();
 
     return 0;
 }
