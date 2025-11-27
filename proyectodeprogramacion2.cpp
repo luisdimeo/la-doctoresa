@@ -191,8 +191,7 @@ int obtenerEntero(const char* prompt) {
         // Limpiar el buffer de entrada en caso de error
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
     }
-    
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); 
+     
 
     return valor;
 }
@@ -205,12 +204,7 @@ void obtenerCadena(char* destino, size_t tamano) {
     // Lectura real de la línea
     cin.getline(destino, tamano);
 
-    // Manejo de error si la línea fue demasiado larga
-    if (cin.fail()) {
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        // Opcional: strncpy(destino, "", tamano); si quieres asegurar un string vacío
-    }
+    
 
 
 }
